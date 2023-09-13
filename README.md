@@ -1,2 +1,3 @@
 # arduinoMega
-Code for interfacing with arduino mega
+Code for interfacing with arduino mega.
+
