@@ -1,7 +1,7 @@
 import serial
 import time
 
-ser = serial.Serial('/dev/ttyACM0', 9600)
+ser = serial.Serial('/dev/ttyACM0', 115200)
 time.sleep(2)
 
 if ser.isOpen():
@@ -9,6 +9,6 @@ if ser.isOpen():
 
 cmd = input("Serial cmd: ")
 while cmd != 'quit':
-	print(ser.write(bytes(int(cmd))))
+	ser.write(b't')
 	time.sleep(0.05)
 	cmd = input("Serial cmd: ")
