@@ -1,5 +1,6 @@
 // Command
-const String MOVE_RES = "$J=G91";
+const String MOVE_JOG = "$J=G91";
+const String MOVE_RES = "G91";
 const String FEED_RATE = "F1000";
 
 // Sensor
@@ -10,12 +11,17 @@ const int SENSOR4 = 33; // Sensor at the start
 const int SENSOR5 = 34;
 const int SENSOR6 = 35;
 
+// Touch sensor
+const int SENSOR7 = 36;
+const int SENSOR8 = 37;
+
 // Motors
 const char MOTOR1 = 'X';
 const char MOTOR2 = 'Y';
 const int X_DIR = 1;
 const int Y_DIR = 1;
 const double X_AMT = 0.1 * X_DIR;
+const double Y_AMT = 250;
 
 
 // Logical Flags
@@ -26,6 +32,9 @@ bool entry2 = false;
 bool exit2 = true;
 bool entry3 = false;
 bool exit3 = true;
+
+// Int side = 0 or 1 for y tray
+int start = 0;
 
 
 byte x;
@@ -38,6 +47,7 @@ void motion_stop();
 void FSM();
 void x_jog(double amount);
 void motor_jog(char motor, double amount);
+void motor_res(char motor, double amount) ;
 void test();
 void idle();
 void session();
@@ -60,6 +70,12 @@ void setup() {
   pinMode(SENSOR1, INPUT);
   pinMode(SENSOR2, INPUT);
   pinMode(SENSOR3, INPUT);
+}
+
+void reset_y_tray() {
+  while (digitalRead( == 1) {
+    y_jog(-Y_AMT);
+  }
 }
 
 void loop() {
@@ -102,8 +118,8 @@ void session() {
   }
 }
 
-// rack1 FSM
 
+// rack1 FSM
 void rack1_fsm() {
   if(!exit1) {
     x_jog(X_AMT);
@@ -122,9 +138,22 @@ void rack1_fsm() {
   }
 }
 
+
 // rack1 FSM Second tray
 void rack2_fsm() {
-  //
+  if (!exit2) {
+    // Jogging item to end of sensor 4.
+    x_jog(X_AMT);
+    if(!digitalRead(SENSOR4)) {
+      exit2 = true;
+      y_move(Y_AMT);
+    }
+  }
+  else {
+    if(Serial1.available()) {
+      
+    }
+  }
 }
 
 
@@ -139,10 +168,27 @@ void x_jog(double amount) {
   motor_jog(MOTOR1, amount);
 }
 
+void y_jog(double amount) {
+  motor_jog(MOTOR3, amount);
+}
+
+void y_move(double amount) {
+  motor_res(MOTOR3, amount);
+}
+
 void motor_jog(char motor, double amount) {
-  String ops = MOVE_RES + String(motor);
+  String ops = MOVE_JOG + String(motor);
   String sign = amount < 0?"-":"+";
   ops += (sign + String(abs(amount), 2) + FEED_RATE + "\n");
+  //Serial.println(ops);
+  // Calling for the motor to move
+  Serial1.print(ops);
+}
+
+void motor_res(char motor, double amount) {
+  String ops = MOVE_RES + String(motor);
+  String sign = amount < 0?"-":"+";
+  ops += (sign + String(abs(amount), 2) + "\n");
   //Serial.println(ops);
   // Calling for the motor to move
   Serial1.print(ops);
