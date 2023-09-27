@@ -12,17 +12,17 @@ const int SENSOR5 = 34;
 const int SENSOR6 = 35;
 
 // Touch sensor
-const int SENSOR7 = 36;
-const int SENSOR8 = 37;
+const int TOUCH1 = 36;
+const int TOUCH2 = 37;
 
 // Motors
 const char MOTOR1 = 'X';
 const char MOTOR2 = 'Y';
+const char MOTOR3 = 'Z';
 const int X_DIR = 1;
 const int Y_DIR = 1;
 const double X_AMT = 0.1 * X_DIR;
-const double Y_AMT = 250;
-
+const double Y_AMT = 0.1 * Y_DIR;
 
 // Logical Flags
 bool idleState = true;
@@ -33,7 +33,8 @@ bool exit2 = true;
 bool entry3 = false;
 bool exit3 = true;
 
-// Int side = 0 or 1 for y tray
+// Int side = 0 or 1 for y tray. this value indicates the bottom
+int curr_tray = 0;
 int start = 0;
 
 
@@ -42,10 +43,13 @@ char grbl_out;
 String cmd;
 
 // Function declaration.
+void sensors_serial_setup();
+void reset();
 void grbl_update();
 void motion_stop();
 void FSM();
 void x_jog(double amount);
+void y_jog(double amount);
 void motor_jog(char motor, double amount);
 void motor_res(char motor, double amount) ;
 void test();
@@ -56,9 +60,11 @@ void rack1_fsm();
 void rack2_fsm();
 
 void setup() {
-  // put your setup code here, to run once:
-  // initialize both serial ports:
+  sensors_serial_setup();
+}
 
+//#######################SETUPS#########################//
+void sensors_serial_setup() {
   // Serial 0 talks to the computer
   Serial.begin(115200);
 
@@ -70,16 +76,21 @@ void setup() {
   pinMode(SENSOR1, INPUT);
   pinMode(SENSOR2, INPUT);
   pinMode(SENSOR3, INPUT);
+
+  pinMode(TOUCH1, INPUT);
 }
 
-void reset_y_tray() {
-  while (digitalRead( == 1) {
-    y_jog(-Y_AMT);
-  }
-}
+
+
+//########################FSM#########################//
 
 void loop() {
-  FSM();
+  if(!systemReady) {
+    reset();
+  }
+  else {
+    Serial.println("System Ready");
+  }
 }
 
 // Creating the logic for the machine.
