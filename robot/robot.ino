@@ -25,17 +25,23 @@ const double X_AMT = 0.1 * X_DIR;
 const double Y_AMT = 0.1 * Y_DIR;
 
 // Logical Flags
+int armMode = 1; // 1 means taking item from arm 0 means taking item from rack
 bool idleState = true;
 bool entry1 = false;
 bool exit1 = true;
 bool entry2 = false;
+bool pause2 = false;
 bool exit2 = true;
 bool entry3 = false;
 bool exit3 = true;
 
-// Int side = 0 or 1 for y tray. this value indicates the bottom
-int curr_tray = 0;
-int start = 0;
+// Reset logical flags
+bool trayYReset = false;
+bool systemReady = false;
+
+// Int side = 0 or 1 for y tray
+int currTrayY = 0;
+int startTrayY = 0;
 
 
 byte x;
@@ -51,13 +57,20 @@ void FSM();
 void x_jog(double amount);
 void y_jog(double amount);
 void motor_jog(char motor, double amount);
-void motor_res(char motor, double amount) ;
+void motor_res(char motor, double amount);
+void trayYToBottom();
+void YBottomCheck();
+void trayYToTop();
+void yTopCheck();
 void test();
 void idle();
-void session();
+void sessionArm();
 void reset_first_tray();
+
+void reset_second_tray();
 void rack1_fsm();
 void rack2_fsm();
+void rack3_fsm();
 
 void setup() {
   sensors_serial_setup();
@@ -83,13 +96,28 @@ void sensors_serial_setup() {
 
 
 //########################FSM#########################//
+// Reset the Position of the tray so that we can keep track of it.
+void reset() {
+  if(!trayYReset) {
+    x_jog(Y_AMT);
+    if(!digitalRead(TOUCH1)) {
+      trayYReset = true;
+      motion_stop();
+    }
+
+    if(trayYReset) {
+      systemReady = true;
+    }
+  }
+}
 
 void loop() {
   if(!systemReady) {
+    // RESET POSITION 
     reset();
   }
   else {
-    Serial.println("System Ready");
+    FSM();
   }
 }
 
@@ -98,8 +126,8 @@ void FSM() {
   if(idleState) {
     idle();
   }
-  else {
-    session();
+  else if(armMode) {
+    sessionArm();
   }
 }
 
@@ -110,6 +138,7 @@ void idle() {
     entry1 = true;
     exit1 = false;
     idleState = false;
+    armMode = 1;
   }
   else{
     delay(100);
@@ -118,52 +147,111 @@ void idle() {
 }
 
 // Code flow for when object has been detected.
-void session() {
+void sessionArm() {
   if(entry1) {
     Serial.println("In first tray");
     rack1_fsm();
   }
-  else if (entry2) {
+  if (entry2){
     Serial.println("In second tray");
     rack2_fsm();
   }
+  if(entry3){
+    Serial.println("In third tray");
+    rack3_fsm();
+  }
 }
 
-
-// rack1 FSM
+// FSM
 void rack1_fsm() {
-  if(!exit1) {
-    x_jog(X_AMT);
-    if(!digitalRead(SENSOR2)) {
-      exit1 = true;
-    }
-  }
-  else{
-    if(!entry2) {
+  if(armMode) {
+    // Mode for collecting from the arm.
+    if(!exit1) {
       x_jog(X_AMT);
-      if(!digitalRead(SENSOR3)) {
-        entry2 = true;
-        reset_first_tray();
+      trayYToBottom(); // Get the tray to the bottom too.
+      if(!digitalRead(SENSOR2)) {
+        exit1 = true;
+      }
+    }
+    else if (trayYAvailable) {
+      trayYToBottom();
+    }
+    else{
+      if(!entry2) {
+        x_jog(X_AMT);
+        if(!digitalRead(SENSOR3)) {
+          entry2 = true;
+          reset_first_tray();
+        }
       }
     }
   }
 }
 
-
-// rack1 FSM Second tray
+// FSM Second tray
 void rack2_fsm() {
-  if (!exit2) {
-    // Jogging item to end of sensor 4.
-    x_jog(X_AMT);
-    if(!digitalRead(SENSOR4)) {
-      exit2 = true;
-      y_move(Y_AMT);
+  if(armMode) {
+    if(!pause2) {
+      // Jogging item to end of sensor 4.
+      x_jog(X_AMT);
+      trayYToTop();
+      if(!digitalRead(SENSOR4)) {
+        pause2 = true;
+      }
+    }
+    else if (currTrayY == startTrayY) {
+      // Wait for tray to reach the top.
+      trayYToTop();
+    }
+    else{
+      // Wait for item to hit tray 3.
+      x_jog(-X_AMT); // return to opening of tray
+      if(!digitalRead(SENSOR5)) {
+        reset_second_tray();
+        entry3 = true;
+      }
     }
   }
-  else {
-    if(Serial1.available()) {
-      
+}
+
+void rack3_fsm() {
+  if(armMode) {
+    if(digitalRead(SENSOR5)) {
+      x_jog(-X_AMT);
     }
+  }
+}
+
+//Checking whether tray Y is engaged in action. 
+bool trayYAvailable(){
+  return !pause2;
+}
+
+void trayYToBottom() {
+  if(trayYAvailable() && currTrayY != startTrayY){
+    y_jog(Y_AMT);
+    YBottomCheck();
+  }
+}
+
+void YBottomCheck() {
+  if(!digitalRead(TOUCH1)) {
+    currTrayY = 0;
+    motion_stop();
+  }
+}
+
+void trayYToTop() {
+  if(currTrayY == startTrayY) {
+    y_jog(-Y_AMT);
+    yTopCheck();
+  }
+}
+
+void yTopCheck() {
+  if(!digitalRead(TOUCH2)) {
+    currTrayY = 1;
+    motion_stop();
   }
 }
 
@@ -171,6 +259,12 @@ void rack2_fsm() {
 void reset_first_tray() {
   entry1 = false;
   exit1 = true;
+}
+
+void reset_second_tray() {
+  entry2 = false;
+  exit2 = true;
+  pause2 = false;
 }
 
 
