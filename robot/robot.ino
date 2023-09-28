@@ -72,7 +72,7 @@ void rack1_fsm();
 void rack2_fsm();
 void rack3_fsm();
 
-void setup() {
+void setup1() {
   sensors_serial_setup();
 }
 
@@ -111,7 +111,7 @@ void reset() {
   }
 }
 
-void loop() {
+void loop1() {
   if(!systemReady) {
     // RESET POSITION 
     reset();
