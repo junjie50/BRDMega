@@ -111,7 +111,7 @@ void reset() {
   }
 }
 
-void loop1() {
+void loo1p() {
   if(!systemReady) {
     // RESET POSITION 
     reset();
