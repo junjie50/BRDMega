@@ -6,7 +6,23 @@ void motionManager::jogArmBeltLeft() {
   motorJog(XMOTOR, XDIR);
 }
 
+void motionManager::jogArmBeltRight() {
+  motorJog(XMOTOR, -XDIR);
+}
+
+void motionManager::moveArmBeltLeft(int amt) {
+  motorMove(XMOTOR, XDIR * amt);
+}
+
+void motionManager::moveArmBeltRight(int amt) {
+  motorMove(XMOTOR, -XDIR * amt);
+}
+
 void motionManager::jogSliderBeltDown() {
+  motorJog(YMOTOR, -YDIR);
+}
+
+void motionManager::jogSliderBeltUp() {
   motorJog(YMOTOR, YDIR);
 }
 

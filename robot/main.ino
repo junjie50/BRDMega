@@ -10,6 +10,8 @@ void setup() {
 
   // Setting up the sensors
   mainSystem.setUp();
+
+  delay(1000);
 }
 
 

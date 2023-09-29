@@ -13,6 +13,12 @@ void sensorManager::sensorSetUp() {
   pinMode(TOUCH2, INPUT);
 }
 
+
+// sensorActivated returns true if objected is detected or touch sensor is pressed.
+bool sensorManager::sensorActivated(int num) {
+  return readSensor(num) == 0;
+}
+
 int sensorManager::readSensor(int num){
   return digitalRead(sensors[num]);
 }

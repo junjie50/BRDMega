@@ -3,7 +3,7 @@
 #define YDIR  1
 #define XAMT  0.1 * XDIR
 #define YAMT  0.1 * YDIR
-#define JOGAMT  0.1
+#define JOGAMT  0.2
 #define MOTOR1 'X'
 #define MOTOR2  'Y'
 #define MOTOR3 'Z'
@@ -19,9 +19,17 @@
 #include "Arduino.h"
 class motionManager {
   public:
-    // Higher abstractions
+    // Higher abstractions for arm belt
     void jogArmBeltLeft();
+    void jogArmBeltRight();
+    void moveArmBeltLeft(int amt);
+    void moveArmBeltRight(int amt);
+
+    // Higher abstractions for slider belt
     void jogSliderBeltDown();
+    void jogSliderBeltUp();
+
+  
 
     // Lower abstractions
     void motorJog(int motor_num, double dir);

@@ -8,7 +8,7 @@ void fsm::setUp() {
 void fsm::resetMachine() {
   if(!trayYReset) {
     motion.jogSliderBeltDown();
-    if(!sensors.readSensor(6)) {
+    if(sensors.sensorActivated(6)) {
       motion.motionStop();
       trayYReset = true;
     }
@@ -18,8 +18,8 @@ void fsm::resetMachine() {
   }
 }
 
+//######################THIS PART RUNS IN THE LOOP######################//
 void fsm::mainLogic() {
-  if(!systemReady) {
-    resetMachine();
-  }
+  motion.jogSliderBeltUp();
+  delay(10);
 }

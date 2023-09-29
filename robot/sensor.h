@@ -15,6 +15,7 @@
 class sensorManager {
   public:
     void sensorSetUp();
+    bool sensorActivated(int num);
     int readSensor(int num);
 
   private:
