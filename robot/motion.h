@@ -40,5 +40,4 @@ class motionManager {
   private:
     char motors[3] = {MOTOR1, MOTOR2, MOTOR3};
 };
-
 #endif

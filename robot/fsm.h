@@ -8,6 +8,11 @@ class fsm {
   public:
     void setUp();
     void resetMachine();
+    void idle(); 
+    void flowLogicFirst();
+    void flowLogicSecond();
+    void flowLogicThird();
+    void flowLogic();
     void mainLogic();
     
   private:
@@ -19,7 +24,7 @@ class fsm {
     bool systemReady = false;
     
     // Logical Flags
-    int armMode = 1; // 1 means taking item from arm 0 means taking item from rack
+    int systemMode = 1; // 1 means taking item from arm 0 means taking item from rackrack
     bool idleState = true;
     bool entry1 = false;
     bool exit1 = true;
@@ -28,6 +33,8 @@ class fsm {
     bool exit2 = true;
     bool entry3 = false;
     bool exit3 = true;
+    int itemInSystem = 0;
+    bool trayThreeReady = false;
     
     
     // Int side = 0 or 1 for y tray
