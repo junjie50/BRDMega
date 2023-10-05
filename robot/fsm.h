@@ -8,6 +8,10 @@ class fsm {
   public:
     void setUp();
     void resetMachine();
+    void resetTrayOne();
+    void resetTrayTwo();
+    void resetTrayThree();
+    void resetStates();
     void idle(); 
     void flowLogicFirst();
     void flowLogicSecond();
