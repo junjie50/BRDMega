@@ -8,6 +8,7 @@
 #define TOUCH1 36
 #define TOUCH2 37
 
+
 // Define the class for sensorManager
 #ifndef sensorClass_h
 #define sensorClass_h

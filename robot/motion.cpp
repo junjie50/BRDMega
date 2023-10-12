@@ -26,6 +26,14 @@ void motionManager::jogSliderBeltUp() {
   motorJog(YMOTOR, YDIR);
 }
 
+void motionManager::moveSliderBeltDown(int amt) {
+  motorMove(YMOTOR, -YDIR * amt);
+}
+
+void motionManager::moveSliderBeltUp(int amt) {
+  motorMove(YMOTOR, YDIR * amt);
+}
+
 
 // Basic movements
 void motionManager::motorJog(int motor_num, double dir) {

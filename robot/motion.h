@@ -28,6 +28,8 @@ class motionManager {
     // Higher abstractions for slider belt
     void jogSliderBeltDown();
     void jogSliderBeltUp();
+    void moveSliderBeltDown(int amt);
+    void moveSliderBeltUp(int amt);
 
   
 

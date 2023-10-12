@@ -1,3 +1,6 @@
+#define RIGHT_AMT 50
+#define LEFT_AMT 50
+
 #ifndef fsmClass_h
 #define fsmClass_h
 #include "Arduino.h"
@@ -6,12 +9,17 @@
 
 class fsm {
   public:
+    // Utility
     void setUp();
+    void jogSliderDownUntilTouch();
+    void jogSliderUpUntilTouch();
     void resetMachine();
     void resetTrayOne();
     void resetTrayTwo();
     void resetTrayThree();
     void resetStates();
+
+    // Logic control
     void idle(); 
     void flowLogicFirst();
     void flowLogicSecond();
@@ -33,8 +41,6 @@ class fsm {
     bool entry1 = false;
     bool exit1 = true;
     bool entry2 = false;
-    bool pause2 = false;
-    bool exit2 = true;
     bool entry3 = false;
     bool exit3 = true;
     int itemInSystem = 0;
@@ -44,6 +50,7 @@ class fsm {
     // Int side = 0 or 1 for y tray
     int currTrayY = 0;
     int startTrayY = 0;
+    int endTrayY = 1;
 };
 
 #endif

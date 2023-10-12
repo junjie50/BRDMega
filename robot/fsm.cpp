@@ -1,8 +1,27 @@
 #include "Arduino.h"
 #include "fsm.h"
 
+//######################### UTILITY FUNCTIONS ######################### //
 void fsm::setUp() {
   sensors.sensorSetUp();
+}
+
+// Jog slider down to touch sensor, set the position control variable.
+void fsm::jogSliderDownUntilTouch() {
+  motion.jogSliderBeltDown();
+  if(sensors.sensorActivated(6)) {
+    motion.motionStop();
+    currTrayY = startTrayY;
+  }
+}
+
+// Jog slider up to touch sensor, set the position control variable.
+void fsm::jogSliderUpUntilTouch() {
+  motion.jogSliderBeltUp();
+  if(sensors.sensorActivated(7)) {
+    motion.motionStop();
+    currTrayY = endTrayY;
+  }
 }
 
 // Function to reset the states of the machine
@@ -12,6 +31,7 @@ void fsm::resetMachine() {
     if(sensors.sensorActivated(6)) {
       motion.motionStop();
       trayYReset = true;
+      motion.moveSliderBeltUp(10);
     }
   }
   if(trayYReset) { // Can add more conditions to exit resetMachine function
@@ -22,20 +42,18 @@ void fsm::resetMachine() {
 // Function to reset the states of the machine
 void fsm::resetTrayOne() {
     entry1 = false;
-    exit1 = true;
+    exit1 = false;
 }
 
 // Function to reset the states of the machine
 void fsm::resetTrayTwo() {
-    entry2= false;
-    exit2 = true;
-    pause2 = false;
+    entry2 = false;
 }
 
 // Function to reset the states of the machine
 void fsm::resetTrayThree() {
-    entry3= false;
-    exit3 = true;
+    entry3 = false;
+    exit3 = false;
     trayThreeReady = false;
 }
 
@@ -46,39 +64,34 @@ void fsm::resetStates() {
   systemMode = -1;
 }
 
+//######################### END UTILITY FUNCTIONS #########################//
+
+//######################### START LOGIC FUNCTIONS #########################//
 //Function to call during the idle mode of the machine
 void fsm::idle() {
   if(sensors.sensorActivated(0)) {
     entry1 = true;
-    exit1 = false;
     itemInSystem += 1;
     systemMode = 1;
   }
-  if(sensors.sensorActivated(5)) {
+  
+  if(sensors.sensorActivated(4)) {
     // This logic
     entry3 = true;
-    exit3 = false;
     itemInSystem += 1;
     systemMode = 0;
   }
 
-  // During idle mode, if systemmode is activated, reset the slider for arm.
+  // During idle mode, if system mode is activated, reset the slider for arm.
+  // systemMode != 1 means the system is busy handling work.
   if(systemMode == 1) {
     if(currTrayY != startTrayY){
-      motion.jogSliderBeltDown();
-      if(sensors.sensorActivated(6)) {
-        motion.motionStop();
-        currTrayY = startTrayY;
-      }
+      jogSliderDownUntilTouch();//sets currTrayY
     }
   }
   else if(systemMode == 0) {
     if(currTrayY == startTrayY){
-      motion.jogSliderBeltUp();
-      if(sensors.sensorActivated(7)) {
-        motion.motionStop();
-        currTrayY = 1;
-      }
+      jogSliderUpUntilTouch(); //sets currTrayY
     }
   }
   delay(10);
@@ -87,12 +100,9 @@ void fsm::idle() {
 void fsm::flowLogicFirst(){
   if(systemMode == 1){
     if(currTrayY != startTrayY) { // Ensure the slider is down.
-      motion.jogSliderBeltDown();
-      if(sensors.sensorActivated(6)) {
-        currTrayY = startTrayY;
-      }
+      jogSliderDownUntilTouch();//sets currTrayY
     }
-    else if(!exit1) { // do until object exits the tray 1.
+    else if(!exit1) { // do until object hit the end of tray 1.
       motion.jogArmBeltLeft();
       if(sensors.sensorActivated(1)) {
         exit1 = true;
@@ -102,8 +112,7 @@ void fsm::flowLogicFirst(){
       motion.jogArmBeltLeft();
       if(sensors.sensorActivated(2)) {
         entry2 = true;
-        entry1 = false;
-        exit1 = true;
+        resetTrayOne(); // Reset the control flags for tray 1.
       }
     }
   }
@@ -112,116 +121,58 @@ void fsm::flowLogicFirst(){
     if(sensors.sensorActivated(0)) {
       motion.motionStop();
       entry1 = false;
-      itemInSystem -= 1;
       if(itemInSystem == 0) {
         resetStates();
       }
     }
   }
 }
+
 void fsm::flowLogicSecond(){
   if(systemMode == 1){
-    if(!pause2) {
-      motion.jogArmBeltLeft();
-      if(sensors.sensorActivated(3)) {
-        pause2 = true;
-      }
-    }
-  
     if(currTrayY == startTrayY) {
-      motion.jogSliderBeltUp();
-      if(sensors.sensorActivated(7)) {
-        motion.motionStop();
-        currTrayY = 1;
-      }
+      jogSliderUpUntilTouch();//sets currTrayY
     }
-    
-    if(pause2 && currTrayY != startTrayY) {
-      if(!exit2) {
-        motion.jogArmBeltRight();
-        if(sensors.sensorActivated(2)) {
-          exit2 = true;
-        }
-      }
-      else if(!entry3) {
-         motion.jogArmBeltRight();
-         if(sensors.sensorActivated(4)) {
-          entry3 = true;
-          //Reset 2nd tray
-          entry2 = false;
-          exit2 = true;
-          pause2 = false;
-        }
+    else {
+      motion.jogArmBeltRight();
+      if(sensors.sensorActivated(3)) {
+        //Reset 2nd tray
+        resetTrayTwo();
       }
     }
   }
-  else{
-    if(!pause2) {
-      motion.jogArmBeltLeft();
-      if(sensors.sensorActivated(3)) {
-        pause2 = true;
-      }
-    }
-  
+  else {
     if(currTrayY != startTrayY) {
-      motion.jogSliderBeltDown();
-      if(sensors.sensorActivated(6)) {
-        motion.motionStop();
-        currTrayY = startTrayY;
+      jogSliderDownUntilTouch();
+    }
+    else {
+       motion.jogArmBeltRight();
+       if(sensors.sensorActivated(1)) {
+        entry1 = true;
+        //Reset 2nd tray
+        entry2 = false;
       }
     }
-
-    if(pause2 && currTrayY == startTrayY) {
-      if(!exit2) {
-        motion.jogArmBeltRight();
-        if(sensors.sensorActivated(2)) {
-          exit2 = true;
-        }
-      }
-      else if(!entry1) {
-         motion.jogArmBeltRight();
-         if(sensors.sensorActivated(1)) {
-          entry1 = true;
-          //Reset 2nd tray
-          entry2 = false;
-          exit2 = true;
-          pause2 = false;
-        }
-      }
-    }
-    
   }
 }
-void fsm::flowLogicThird(){
-  if(systemMode == 1){
-    motion.jogArmBeltRight();
-    if(!sensors.sensorActivated(4)) { // Jog until slightly pass the entry sensor.
-      entry3 = false;
-      resetStates();
-    }
-  }
-  else{
+
+
+void fsm::flowLogicThird() {
+  if(systemMode == 0) {
     if(!trayThreeReady) {
-      motion.jogArmBeltLeft();
-      if(!sensors.sensorActivated(5)) { // Jog until slightly pass the entry sensor.
-          entry3 = false;
-          if(itemInSystem==4) {
-            trayThreeReady = true;
-          }
+      motion.moveArmBeltLeft(LEFT_AMT); // move a fixed amount to give space for the next object
+      if(itemInSystem==4) {
+        trayThreeReady = true;
       }
-    }
-    else if(!exit3) {
-      motion.jogArmBeltLeft();
-      if(sensors.sensorActivated(4)) { // Jog until slightly pass the exit sensor.
-          exit3 = true;
+      else{
+        entry3 = false;
       }
     }
     else if(!entry2){
       motion.jogArmBeltLeft();
       if(sensors.sensorActivated(2)) { // Jog until slightly the entry sensor.
           entry2 = true;
-          exit3 = false;
-          trayThreeReady = false;
+          itemInSystem -= 1;
       }
     }
   }
