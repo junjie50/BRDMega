@@ -4,10 +4,12 @@
 //Higher level abstractions
 void motionManager::jogArmBeltLeft() {
   motorJog(XMOTOR, XDIR);
+  delay(5);
 }
 
 void motionManager::jogArmBeltRight() {
   motorJog(XMOTOR, -XDIR);
+  delay(5);
 }
 
 void motionManager::moveArmBeltLeft(int amt) {
@@ -20,10 +22,12 @@ void motionManager::moveArmBeltRight(int amt) {
 
 void motionManager::jogSliderBeltDown() {
   motorJog(YMOTOR, -YDIR);
+  delay(5);
 }
 
 void motionManager::jogSliderBeltUp() {
   motorJog(YMOTOR, YDIR);
+  delay(5);
 }
 
 void motionManager::moveSliderBeltDown(int amt) {
@@ -38,16 +42,16 @@ void motionManager::moveSliderBeltUp(int amt) {
 // Basic movements
 void motionManager::motorJog(int motor_num, double dir) {
   double amount = dir * JOGAMT;
-  char motor = motors[motor_num];
-  String ops = MOVE_JOG + String(motor);
+  String motor = motors[motor_num];
+  String ops = MOVE_JOG + motor;
   String sign = amount < 0?"-":"+";
   ops += (sign + String(abs(amount), 2) + FEED_RATE + "\n");
   Serial1.print(ops);
 }
 
 void motionManager::motorMove(int motor_num, double amount) {
-  char motor = motors[motor_num];
-  String ops = MOVE_RES + String(motor);
+  String motor = motors[motor_num];
+  String ops = MOVE_RES + motor;
   String sign = amount < 0?"-":"+";
   ops += (sign + String(abs(amount), 2) + "\n");
   //Serial.println(ops);

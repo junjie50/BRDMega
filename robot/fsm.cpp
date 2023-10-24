@@ -12,6 +12,7 @@ void fsm::jogSliderDownUntilTouch() {
   if(sensors.sensorActivated(6)) {
     motion.motionStop();
     currTrayY = startTrayY;
+    motion.moveSliderBeltUp(4);
   }
 }
 
@@ -20,6 +21,7 @@ void fsm::jogSliderUpUntilTouch() {
   motion.jogSliderBeltUp();
   if(sensors.sensorActivated(7)) {
     motion.motionStop();
+    motion.moveSliderBeltDown(5);
     currTrayY = endTrayY;
   }
 }
@@ -31,7 +33,7 @@ void fsm::resetMachine() {
     if(sensors.sensorActivated(6)) {
       motion.motionStop();
       trayYReset = true;
-      motion.moveSliderBeltUp(10);
+      motion.moveSliderBeltUp(2);
     }
   }
   if(trayYReset) { // Can add more conditions to exit resetMachine function
@@ -69,27 +71,29 @@ void fsm::resetStates() {
 //######################### START LOGIC FUNCTIONS #########################//
 //Function to call during the idle mode of the machine
 void fsm::idle() {
+  Serial.println("Idle");
   if(sensors.sensorActivated(0)) {
     entry1 = true;
     itemInSystem += 1;
     systemMode = 1;
+    idleState = false;
   }
   
   if(sensors.sensorActivated(4)) {
-    // This logic
     entry3 = true;
     itemInSystem += 1;
     systemMode = 0;
+    idleState = false;
   }
 
   // During idle mode, if system mode is activated, reset the slider for arm.
   // systemMode != 1 means the system is busy handling work.
-  if(systemMode == 1) {
+  if(systemMode == 0) {
     if(currTrayY != startTrayY){
       jogSliderDownUntilTouch();//sets currTrayY
     }
   }
-  else if(systemMode == 0) {
+  else if(systemMode == 1) {
     if(currTrayY == startTrayY){
       jogSliderUpUntilTouch(); //sets currTrayY
     }
@@ -99,8 +103,8 @@ void fsm::idle() {
 
 void fsm::flowLogicFirst(){
   if(systemMode == 1){
-    if(currTrayY != startTrayY) { // Ensure the slider is down.
-      jogSliderDownUntilTouch();//sets currTrayY
+    if(currTrayY == startTrayY) { // Ensure the slider is Up.
+      jogSliderUpUntilTouch();//sets currTrayY
     }
     else if(!exit1) { // do until object hit the end of tray 1.
       motion.jogArmBeltLeft();
@@ -111,6 +115,7 @@ void fsm::flowLogicFirst(){
     else if(!entry2) {
       motion.jogArmBeltLeft();
       if(sensors.sensorActivated(2)) {
+        motion.motionStop();
         entry2 = true;
         resetTrayOne(); // Reset the control flags for tray 1.
       }
@@ -130,22 +135,24 @@ void fsm::flowLogicFirst(){
 
 void fsm::flowLogicSecond(){
   if(systemMode == 1){
-    if(currTrayY == startTrayY) {
-      jogSliderUpUntilTouch();//sets currTrayY
+    if(currTrayY != startTrayY) {
+      jogSliderDownUntilTouch();//sets currTrayY to down
     }
     else {
       motion.jogArmBeltRight();
       if(sensors.sensorActivated(3)) {
         //Reset 2nd tray
+        motion.motionStop();
         resetTrayTwo();
+        idleState = true;
       }
     }
   }
   else {
-    if(currTrayY != startTrayY) {
-      jogSliderDownUntilTouch();
+    if(currTrayY == startTrayY) {
+      jogSliderUpUntilTouch();
     }
-    else {
+    else if(!sensors.sensorActivated(0)) { // Should wait for incoming serial communication.
        motion.jogArmBeltRight();
        if(sensors.sensorActivated(1)) {
         entry1 = true;
@@ -159,18 +166,24 @@ void fsm::flowLogicSecond(){
 
 void fsm::flowLogicThird() {
   if(systemMode == 0) {
-    if(!trayThreeReady) {
+    if(currTrayY != startTrayY) {
+      jogSliderDownUntilTouch();//sets currTrayY to down
+    }
+    else if(!trayThreeReady) {
       motion.moveArmBeltLeft(LEFT_AMT); // move a fixed amount to give space for the next object
-      if(itemInSystem==4) {
+      if(itemInSystem == 4) {
         trayThreeReady = true;
       }
       else{
         entry3 = false;
+        delay(5000);
+        idleState = true;
       }
     }
-    else if(!entry2){
+    else if(!entry2) {
       motion.jogArmBeltLeft();
       if(sensors.sensorActivated(2)) { // Jog until slightly the entry sensor.
+          motion.motionStop();
           entry2 = true;
           itemInSystem -= 1;
       }
@@ -193,15 +206,15 @@ void fsm::flowLogic() {
     flowLogicThird();
   }
   else{
-    idleState = true;
+    systemMode = -1;
   }
 }
-
 
 //######################THIS PART RUNS IN THE LOOP######################//
 void fsm::mainLogic() {
   if(!systemReady) {
     resetMachine();
+    delay(5);
   }
   else if(idleState) {
     idle();

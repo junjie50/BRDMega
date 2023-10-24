@@ -7,5 +7,5 @@ void setup() {
 
 void loop() {
   // Put your main code here, to run repeatedly:
-  Serial.println(digitalRead(30));
+  Serial.println(digitalRead(34));
 }

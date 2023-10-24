@@ -1,5 +1,5 @@
-#define RIGHT_AMT 50
-#define LEFT_AMT 50
+#define RIGHT_AMT 25
+#define LEFT_AMT 25
 
 #ifndef fsmClass_h
 #define fsmClass_h
@@ -36,7 +36,7 @@ class fsm {
     bool systemReady = false;
     
     // Logical Flags
-    int systemMode = 1; // 1 means taking item from arm 0 means taking item from rackrack
+    int systemMode = -1; // 1 means taking item from arm 0 means taking item from rackrack
     bool idleState = true;
     bool entry1 = false;
     bool exit1 = true;
