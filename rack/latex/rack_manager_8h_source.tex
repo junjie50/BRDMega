@@ -1,0 +1,31 @@
+\doxysection{rack\+Manager.\+h}
+\hypertarget{rack_manager_8h_source}{}\label{rack_manager_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ RACK\_MANAGER\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ RACK\_MANAGER\_H}}
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ "{}hole.h"{}}}
+\DoxyCodeLine{00004\ \textcolor{keyword}{class\ }\mbox{\hyperlink{classrack_manager}{rackManager}}\ \{}
+\DoxyCodeLine{00005\ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00006\ \ \ \ \ \textcolor{keywordtype}{int}\ diffX(\textcolor{keywordtype}{int}\ start,\ \textcolor{keywordtype}{int}\ end);}
+\DoxyCodeLine{00007\ \ \ \ \ \textcolor{keywordtype}{int}\ diffY(\textcolor{keywordtype}{int}\ start,\ \textcolor{keywordtype}{int}\ end);}
+\DoxyCodeLine{00008\ \ \ \ \ \textcolor{keywordtype}{int}\ diffHighestY(\textcolor{keywordtype}{int}\ start);}
+\DoxyCodeLine{00009\ \ \ \ \ \textcolor{keywordtype}{int}\ diffSecondY(\textcolor{keywordtype}{int}\ start);}
+\DoxyCodeLine{00010\ \ \ \ \ \textcolor{keywordtype}{int}\ diffThirdY(\textcolor{keywordtype}{int}\ start);}
+\DoxyCodeLine{00011\ }
+\DoxyCodeLine{00012\ \ \ \ \ \textcolor{keywordtype}{int}\ toWorkerHoleX(\textcolor{keywordtype}{int}\ start);}
+\DoxyCodeLine{00013\ \ \ \ \ \textcolor{keywordtype}{int}\ toWorkerHoleY(\textcolor{keywordtype}{int}\ start);}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00016\ \ \ \ \ \textcolor{keywordtype}{int}\ highest\_y\ =\ 135;}
+\DoxyCodeLine{00017\ \ \ \ \ \textcolor{keywordtype}{int}\ second\_y\ =\ 97;}
+\DoxyCodeLine{00018\ \ \ \ \ \textcolor{keywordtype}{int}\ third\_y\ =\ 60;}
+\DoxyCodeLine{00019\ }
+\DoxyCodeLine{00020\ \ \ \ \ \textcolor{comment}{//hole\ hardcode}}
+\DoxyCodeLine{00021\ \ \ \ \ \mbox{\hyperlink{class_hole}{Hole}}\ robot\ =\ \mbox{\hyperlink{class_hole}{Hole}}(0,\ 72);}
+\DoxyCodeLine{00022\ \ \ \ \ \mbox{\hyperlink{class_hole}{Hole}}\ worker\ =\ \mbox{\hyperlink{class_hole}{Hole}}(0,\ 38);}
+\DoxyCodeLine{00023\ \};}
+\DoxyCodeLine{00024\ }
+\DoxyCodeLine{00025\ }
+\DoxyCodeLine{00026\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

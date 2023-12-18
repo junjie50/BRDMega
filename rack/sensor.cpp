@@ -9,8 +9,8 @@ void sensorManager::sensorSetUp() {
   pinMode(SENSOR5, INPUT);
   pinMode(SENSOR6, INPUT);
 
-  pinMode(TOUCH1, INPUT);
-  pinMode(TOUCH2, INPUT);
+  pinMode(TOUCHX, INPUT);
+  pinMode(TOUCHY, INPUT);
 }
 
 

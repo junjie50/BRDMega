@@ -5,11 +5,17 @@
 #define SENSOR4 33
 #define SENSOR5 34
 #define SENSOR6 35
-#define TOUCH1 36
-#define TOUCH2 37
+#define TOUCHX 36
+#define TOUCHY 37
+
+// define the sensor index in the list.
+#define TOUCHXNUMBER 6
+#define TOUCHYNUMBER 7
 
 
-// Define the class for sensorManager
+/**
+ * This class manages the functionality of the sensor.
+ */
 #ifndef sensorClass_h
 #define sensorClass_h
 #include "Arduino.h"
@@ -20,7 +26,7 @@ class sensorManager {
     int readSensor(int num);
 
   private:
-    byte sensors[8] = {SENSOR1, SENSOR2, SENSOR3, SENSOR4, SENSOR5, SENSOR6, TOUCH1, TOUCH2};
+    byte sensors[8] = {SENSOR1, SENSOR2, SENSOR3, SENSOR4, SENSOR5, SENSOR6, TOUCHX, TOUCHY};
 };
 
 #endif
