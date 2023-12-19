@@ -26,7 +26,7 @@ void fsm::jogSliderUpUntilTouch() {
   }
 }
 
-// Function to reset the states of the machine
+// Function to reset the states of the machine.
 void fsm::resetMachine() {
   if(!trayYReset) {
     motion.jogSliderBeltDown();
@@ -36,7 +36,8 @@ void fsm::resetMachine() {
       motion.moveSliderBeltUp(2);
     }
   }
-  if(trayYReset) { // Can add more conditions to exit resetMachine function
+
+  if(trayYReset) { // Can add more conditions to exit resetMachine function here.
     systemReady = true;
   }
 }
@@ -71,23 +72,33 @@ void fsm::resetStates() {
 //######################### START LOGIC FUNCTIONS #########################//
 //Function to call during the idle mode of the machine
 void fsm::idle() {
-  Serial.println("Idle");
-  if(sensors.sensorActivated(0)) {
-    entry1 = true;
-    itemInSystem += 1;
-    systemMode = 1;
-    idleState = false;
-  }
-  
-  if(sensors.sensorActivated(4)) {
-    entry3 = true;
-    itemInSystem += 1;
-    systemMode = 0;
-    idleState = false;
-  }
+  String nextCmd = comms.nextCommand();
 
+  // Wait for ROS to update the status of the placement.
+  // Signal from rack or arm.
+  if(nextCmd.length() > 0) {
+    if(sensors.sensorActivated(0)) {
+      entry1 = true;
+      idleState = false;
+      if(itemInSystem == 0){
+        itemInSystem += 1;
+        systemMode = 1;
+        itemType = 1; // Declaring the item type deposited.
+      }
+    }
+    
+    if(sensors.sensorActivated(4)) {
+      entry3 = true;
+      idleState = false;
+      if(itemInSystem == 0) {
+        itemInSystem += 1;
+        systemMode = 0;
+        itemType = 1; // Declaring the item type deposited.
+      }
+    }
+  }
   // During idle mode, if system mode is activated, reset the slider for arm.
-  // systemMode != 1 means the system is busy handling work.
+  // systemMode != -1 means the system is busy handling work.
   if(systemMode == 0) {
     if(currTrayY != startTrayY){
       jogSliderDownUntilTouch();//sets currTrayY
@@ -152,12 +163,14 @@ void fsm::flowLogicSecond(){
     if(currTrayY == startTrayY) {
       jogSliderUpUntilTouch();
     }
-    else if(!sensors.sensorActivated(0)) { // Should wait for incoming serial communication.
-       motion.jogArmBeltRight();
-       if(sensors.sensorActivated(1)) {
+    else if(!sensors.sensorActivated(0)) {
+      motion.jogArmBeltRight();
+      if(sensors.sensorActivated(1)) {
         entry1 = true;
         //Reset 2nd tray
         entry2 = false;
+        // Move the item pass the last sensor.
+        motion.moveArmBeltRight(RIGHT_AMT);
       }
     }
   }
@@ -194,15 +207,15 @@ void fsm::flowLogicThird() {
 void fsm::flowLogic() {
   // Code flow for when object has been detected.
   if(entry1) {
-    Serial.println("In first tray");
+    // Serial.println("In first tray");
     flowLogicFirst();
   }
   else if(entry2){
-    Serial.println("In second tray");
+    // Serial.println("In second tray");
     flowLogicSecond();
   }
   else if(entry3){
-    Serial.println("In third tray");
+    // Serial.println("In third tray");
     flowLogicThird();
   }
   else{
