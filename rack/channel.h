@@ -2,17 +2,15 @@
 
 #define HIGHEST_Y = 110;
 
-#ifndef holeClass_h
-#define holeClass_h
-class Hole {
+#ifndef channelClass_h
+#define channelClass_h
+class Channel {
   public:
     int xOffset;
     int yOffset;
     String label;
-
-    Hole(int _xoff, int _yoff);
-
-  private:
     int numberOfItems;
+
+    Channel(int _xoff, int _yoff);
 };
 #endif

@@ -15,5 +15,6 @@ String commsManager::nextCommand() {
 }
 
 void commsManager::sendMessage(String message) {
+  
   Serial.println(message);
 }

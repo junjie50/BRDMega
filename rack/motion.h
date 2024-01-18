@@ -29,7 +29,7 @@ class motionManager {
     void moveY(int amt);
     void moveX(int amt);
     void moveZ(int amt);
-
+    
     void moveCarFront(int amt);
     void moveCarBack(int amt);
     void jogSliderRight();
@@ -39,7 +39,7 @@ class motionManager {
     void moveSliderUp(int amt);
     void jogSliderUp();
     void moveSliderDown(int amt);
-
+    
     // Lower abstractions
     void motorJog(int motor_num, double dir);
     void motorMove(int motor_num, double amount);

@@ -9,14 +9,16 @@ fsm fsmFlow;
 void setup() {
   Serial.begin(115200);
   Serial1.begin(115200);
+
   delay(2000);
   fsmFlow.setUp();
+
+  // Clearing the serial buffer
   while (Serial1.available()) {
     String msg = Serial1.readString();
     Serial.println(msg);
   }
 }
-
 
 /************************************************
  * This loop will keep running during the program execution.

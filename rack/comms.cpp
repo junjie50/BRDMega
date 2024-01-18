@@ -1,5 +1,6 @@
 #include "comms.h"
 
+
 // For now use serial from computer to test the system.
 String commsManager::nextCommand() {
   if (Serial.available()) {
