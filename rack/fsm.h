@@ -11,6 +11,8 @@ class fsm {
   public:
     void moveToAndUpdate(int x_amt, int y_amt);
     void moveZAndUpdate(int amt);
+    void resetDepositLoop();
+    void resetStorageLoop();
     void depositLoop();
     void storageLoop();
     void retrieveLoop();
@@ -21,6 +23,7 @@ class fsm {
     String getGrblReply();
     void resetMainFlags();
     void fsmMain();
+    void waitForReply();
 
   private:
     sensorManager sensor;
@@ -40,20 +43,20 @@ class fsm {
     int replyCount = 0;
 
     // Deposit loop logic flags
-    int itemCount = 0;
     bool depositMode = false;
     bool commandSentDeposit = false;
+    bool dockingSetUp = false;
 
     // Storage loop logic flags
     bool storageMode = false;
-    int storageSwtich = 0;
-    Channel storageTarget = nullptr;
+    int storageSwitch = 0;
+    Channel storageTarget = rackManager.NONE;
     bool commandSentStorage = false;
 
     // Retrieve loop logic flags
     bool retrieveMode = false;
-    Channel retrieveTarget = nullptr;
-
+    Channel retrieveTarget = rackManager.NONE;
+    
     // System variables
     String itemType = "";
 };

@@ -1,8 +1,10 @@
 #ifndef RACK_MANAGER_H
 #define RACK_MANAGER_H
-
 #include "channel.h"
+
 class rackManager {
+  static Channel NONE = Channel(-1, -1);
+
   public:
     int diffX(int start, int end);
     int diffY(int start, int end);
@@ -16,22 +18,22 @@ class rackManager {
     int toRobotChannelY(int start);
 
     void setup();
-    bool inSeeSaw(String label); 
-    bool inStationary(String label); 
+    bool inSeesaw(String label); 
+    bool inStationary(String label);
 
-    Channel nextFree(String label);
-    Channel locateChannel(String label);
-
-  private:
-    int highest_y = 135;
-    int first_y = 135;
-    int second_y = 97;
-    int third_y = 60;
+    Channel* nextFree(String label);
+    Channel* locateChannel(String label);
 
     // buffer channel hardcode
     Channel robot = Channel(0, 72);
     Channel worker = Channel(0, 38);
     Channel seesaws[4];
     Channel stationaries[2];
+
+  private:
+    int highest_y = 135;
+    int first_y = 135;
+    int second_y = 97;
+    int third_y = 60;
 };
 #endif

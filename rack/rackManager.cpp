@@ -1,4 +1,5 @@
 #include "rackManager.h"
+#include "channel.h"
 
 /************************************************
 Movement utility functions
@@ -43,12 +44,12 @@ int rackManager::toRobotChannelX(int start) {
  # Hole management
  ***********************************************/
 void rackManager::setup() {
-  seesaws[0] = new Channel(0, highest_y);
-  seesaws[1] = new Channel(1, third_y);
-  seesaws[2] = new Channel(1, second_y);
-  seesaws[3] = new Channel(1, first_y);
-  stationary[0] = new Channel(0, 0);
-  stationary[1] = new Channel(1, 0);
+  seesaws[0] = Channel(0, highest_y);
+  seesaws[1] = Channel(1, third_y);
+  seesaws[2] = Channel(1, second_y);
+  seesaws[3] = Channel(1, first_y);
+  stationaries[0] = Channel(0, 0);
+  stationaries[1] = Channel(1, 0);
 }
 
 // Checking for the label in seesaw
@@ -93,7 +94,7 @@ Channel rackManager::nextFree(String label) {
 
 // Function to get the channel containing the label.
 Channel rackManager::locateChannel(String label) {
-  if(inSeeSaw(label)) {
+  if(inSeesaw(label)) {
     for(int i = 0; i < 4; i++) {
       if (seesaws[i].label == label){
         return seesaws[i];
@@ -102,7 +103,7 @@ Channel rackManager::locateChannel(String label) {
   }
   if(inStationary(label)){
     for(int i = 0; i < 2; i++) {
-      return stationaries[i]
+      return stationaries[i];
     }
   }
   return nullptr;

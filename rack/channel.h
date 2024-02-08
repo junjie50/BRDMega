@@ -10,7 +10,10 @@ class Channel {
     int yOffset;
     String label;
     int numberOfItems;
-
+    Channel();
     Channel(int _xoff, int _yoff);
+    void removeOneItem();
+    void addOneItem();
+    bool empty();
 };
 #endif

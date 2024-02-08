@@ -1,5 +1,7 @@
 #include "Arduino.h"
-#include "hole.h"
+#include "channel.h"
+
+Channel::Channel(){}
 
 // hole initialize.
 Channel::Channel(int _xoff, int _yoff) {
@@ -7,4 +9,16 @@ Channel::Channel(int _xoff, int _yoff) {
   yOffset = _yoff;
   label = "";
   numberOfItems = 0;
+}
+
+void Channel::removeOneItem() {
+  numberOfItems -= 1;
+}
+
+void Channel::addOneItem() {
+  numberOfItems += 1;
+}
+
+bool Channel::empty() {
+  return numberOfItems == 1;
 }

@@ -45,27 +45,18 @@ void fsm::communicationCheck() {
 
   if(next == "deposit") {
     depositMode = true;
-    readyForDocking = false;
-    commandSentDeposit = false;
-
+    resetDepositLoop();
     // HARDCODE ITEM TYPE HERE
     itemType = 'A';
-    itemCount = 4;
   }
   else if(next == "retrieve") {
     retrieveMode = true;
     readyForDocking = false;
-    commandSentRetrieve = false;
     // HARDCODE ITEM TYPE HERE
     itemType = 'A';
-    itemCount = 4;
-
   }
-  else if(next == "done") {
-    if(depositMode) {
-      depositMode = false;
-      storageMode = true;
-    }
+  else if(!rack.robot.empty()) {
+    storageMode = true;
   }
 }
 
@@ -81,6 +72,16 @@ String fsm::getGrblReply() {
   return result;
 }
 
+// Call this function to wait for response and add 1 to the replyCount.
+void fsm::waitForReply() {
+  if(Serial1.available()) {
+    String grblMSG = getGrblReply();
+    if(grblMSG == "ok") {
+      replyCount += 1;
+    }
+  }
+}
+
 /************************************************
  * This loop will run until robot is done depositing
  * the items.
@@ -93,27 +94,39 @@ void fsm::depositLoop() {
       commandSentDeposit = true;
     }
     else if (replyCount < commandSent){
-      if(Serial1.available()) {
-        String grblMSG = getGrblReply();
-        if(grblMSG == "ok") {
-          replyCount += 1;
-        }
-      }
-
-      if(replyCount == commandSent) {
-        // SEND A MESSAGE TO THE ROBOT TO DOCK AND DEPOSIT.
-        comms.sendMessage("ready for deposit");
-      }
+      waitForReply();
     }
     else{
+      // SEND A MESSAGE TO THE ROBOT TO DOCK AND DEPOSIT.
+      comms.sendMessage("ready for deposit");
       readyForDocking = true;
     }
   }
   else {
-    // Ready for docking procedures
-    Serial.println("Ready for docking");
+    // Ready for docking procedures.
+    // TODO: Add in function to allow deposit of 4 items.
+    // First sensor sense item, move belt by a certain amount.
+    // Until 4 items are deposited.
+    if(!dockingSetUp) {
+      rack.robot.label = itemType;
+      dockingSetUp = true;
+    }
+    else {
+      // Ending the deposit mode loop
+      rack.robot.numberOfItems = 4;
+      depositMode = false;
+    }
   }
 }
+
+void fsm::resetDepositLoop() {
+  commandSentDeposit = false;
+  dockingSetUp = false;
+  readyForDocking = false;
+  replyCount = 0;
+  commandSent = 0;
+}
+
 
 /************************************************
  * This loop will run until robot is done storing
@@ -121,56 +134,51 @@ void fsm::depositLoop() {
  ***********************************************/
 
  void fsm::storageLoop() {
+  if (rack.robot.empty()) {
+    // Finish storage the items.
+    storageMode = false;
+  }
   if(storageSwitch == 0) {
     if(!commandSentStorage){
-      // Move slider to the correct position.
+      // Move slider to the correct position of the robot channel.
       moveToAndUpdate(rack.toRobotChannelX(currX), rack.toRobotChannelY(currY));
       commandSentStorage = true;
     }
-    else if (replyCount < commandSent){
-      if(Serial1.available()) {
-        String grblMSG = getGrblReply();
-        if(grblMSG == "ok") {
-          replyCount += 1;
-        }
-      }
-      if(replyCount == commandSent) {
-        // Reached the buffer position to collect
-        // Collect one item from the buffer.
-        storageSwtich = 1;
-        commandSentStorage = false;
-      }
+    else if (replyCount < commandSent) {
+      waitForReply();
     }
+    else {
+      // Reached the buffer position to collect
+      // Collect one item from the buffer.
+      storageSwitch = 1;
+      commandSentStorage = false;
+      rack.robot.removeOneItem();
+    }
+  }
   else {
-    if(!commandSentStorage){
+    if (!commandSentStorage){
       // Move slider to the correct position.
       moveToAndUpdate(rack.diffX(currX, storageTarget.xOffset), rack.diffY(currY, storageTarget.yOffset));
       commandSentStorage = true;
     }
     else if (replyCount < commandSent){
-      if(Serial1.available()) {
-        String grblMSG = getGrblReply();
-        if(grblMSG == "ok") {
-          replyCount += 1;
-        }
-      }
-      if(replyCount == commandSent) {
-        // Reached the target position to deposit
-        // Remove one item from the slider
-        storageSwtich = 0;
-        commandSentStorage = false;
-        itemCount -= 1;
-      }
+      waitForReply();
     }
-  }
-  if (itemCount == 0) {
-    // Finish storage the items.
-    storageMode = false;
+    else {
+      // Reached the target position to deposit
+      // Add one item to the storage channel.
+      storageSwitch = 0;
+      commandSentStorage = false;
+      storageTarget.addOneItem();
+    }
   }
 }
 
-void fsm::retrieveLoop() {
 
+
+void fsm::retrieveLoop() {
+  storageSwitch = 0;
+  commandSentStorage = false;
 }
 
 void fsm::resetMainFlags() {
@@ -181,36 +189,37 @@ void fsm::resetMainFlags() {
 /************************************************
  * This is the starting point of the program
  ***********************************************/
-
 void fsm::fsmMain() {
   if(!systemReady) {
     // reset the system variables.
     systemReset();
   }
-  else if (storageMode) {
-    // Rack in storage mode. Contains items of a certain number in the buffer1.
-    if (storagetTarget == nullptr) {
-      // find the next free storage channel.
-      storageTarget = rack.nextFree(itemType);
-      // TO DO error checking, if no more free storage, activate seesaw!!!!!!!!!!
-    }
-    else {
-      storageLoop();
-    }
-  }
-  else if (retrieveMode) {
-    // In retrieveMode when robot is coming to collect the items.
-    if(retrieveTarget == nullptr) {
-      retrieveTarget = rack.locateChannel(itemType);
-      // if retrieveTarget is still nullptr, error as item not inside.
-      // Send worker to insert into rack.
-    }
-    else if()
-  }
   else {
-    // idle mode check for system modes via communication
-    communicationCheck();
-    if(depositMode) {
+    communicationCheck(); // This part updates the rack's state.
+    if(storageMode) {
+      // Rack in storage mode. Contains items of a certain number in the buffer1.
+      if (storageTarget == rackManager.NONE) {
+        // find the next free storage channel.
+        storageTarget = rack.nextFree(itemType);
+        // TO DO error checking, if no more free storage, activate seesaw!
+      }
+      else {
+        storageLoop();
+      }
+    }
+    else if(retrieveMode) {
+      // In retrieveMode when robot is coming to collect the items.
+      if(retrieveTarget == rackManager.NONE) {
+        retrieveTarget = rack.locateChannel(itemType);
+        // if retrieveTarget is still NULL, error as item not inside.
+        // Send worker to insert into rack.
+      }
+      else {
+        retrieveLoop();
+      }
+    }
+    else if(depositMode) {
+      // For robot to deposit the items.
       depositLoop();
     }
   }
