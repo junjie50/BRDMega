@@ -4,7 +4,7 @@ fsm fsmFlow;
 
 
 /************************************************
- * This is the starting set up of the program.
+ *This is the starting set up of the program.
  ***********************************************/
 void setup() {
   Serial.begin(115200);

@@ -5,7 +5,7 @@
 #define SENSOR4 33
 #define SENSOR5 34
 #define SENSOR6 35
-#define TOUCHX 36 //Used to zero the x
+#define TOUCHX 36 // Touch sensor at the bottomright
 #define TOUCHY 37
 
 // define the sensor index in the list.

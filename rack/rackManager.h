@@ -3,7 +3,6 @@
 #include "channel.h"
 
 class rackManager {
-  static Channel NONE = Channel(-1, -1);
 
   public:
     int diffX(int start, int end);

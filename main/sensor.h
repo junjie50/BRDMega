@@ -27,5 +27,4 @@ class sensorManager {
     const int rackEntrySensor = 4;
     byte sensors[8] = {SENSOR1, SENSOR2, SENSOR3, SENSOR4, SENSOR5, SENSOR6, TOUCH1, TOUCH2};
 };
-
 #endif

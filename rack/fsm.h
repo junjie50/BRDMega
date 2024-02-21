@@ -50,12 +50,12 @@ class fsm {
     // Storage loop logic flags
     bool storageMode = false;
     int storageSwitch = 0;
-    Channel storageTarget = rackManager.NONE;
+    Channel* storageTarget = nullptr;
     bool commandSentStorage = false;
 
     // Retrieve loop logic flags
     bool retrieveMode = false;
-    Channel retrieveTarget = rackManager.NONE;
+    Channel* retrieveTarget = nullptr;
     
     // System variables
     String itemType = "";

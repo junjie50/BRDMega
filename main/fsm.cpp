@@ -56,8 +56,6 @@ void sendCone(int number) {
   coneNum_msg.data = number;
   pubCone.publish( &coneNum_msg );
 }
-
-
 //######################### COMMUNICATION END ######################### //
 
 
@@ -355,6 +353,9 @@ void fsm::collect() {
 
 //######################THIS PART RUNS IN THE LOOP######################//
 void fsm::mainLogic() {
+  // Error handling by pass
+  if(errorState) {return;} 
+
   nextCmd = nextCommand();
   sendCone(itemInSystem);
   if(!systemReady) {

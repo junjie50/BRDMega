@@ -1,10 +1,32 @@
 #include "sensor.h"
 #include "fsm.h"
 
+/************************************************
+Setup functions for different classes.
+ ***********************************************/
 void fsm::setUp() {
   sensor.sensorSetUp();
 }
 
+/************************************************
+On boot reset function for the robot.
+ ***********************************************/
+void fsm::systemReset() {
+  if(!xReset) {
+    motion.jogSliderRight();
+    if (sensor.sensorActivated(TOUCHXNUMBER)) {
+      motion.motionStop();
+      xReset = true;
+    }
+  }
+  if(xReset) {
+    systemReady = true;
+  }
+}
+
+/************************************************
+Movement utility functions.
+ ***********************************************/
 void fsm::moveToAndUpdate(int x_amt, int y_amt) {
   if(x_amt != 0) {
     motion.moveX(x_amt);
@@ -23,26 +45,18 @@ void fsm::moveZAndUpdate(int amt) {
   currZ += amt;
 }
 
-void fsm::systemReset() {
-  if(!xReset) {
-    motion.jogSliderRight();
-    if (sensor.sensorActivated(TOUCHXNUMBER)) {
-      motion.motionStop();
-      xReset = true;
-    }
-  }
-  if(xReset) {
-    systemReady = true;
-  }
-}
 
-// This function is used to check for the commands from the robot.
+/************************************************
+Communication utility functions.
+ ***********************************************/
+
+// This function checks for the command and update
+// the state of the rack.
 void fsm::communicationCheck() {
   String next = comms.nextCommand();
   if(next.length() != 0) {
     Serial.println(next);
   }
-
   if(next == "deposit") {
     depositMode = true;
     resetDepositLoop();
@@ -81,6 +95,7 @@ void fsm::waitForReply() {
     }
   }
 }
+
 
 /************************************************
  * This loop will run until robot is done depositing
@@ -158,7 +173,7 @@ void fsm::resetDepositLoop() {
   else {
     if (!commandSentStorage){
       // Move slider to the correct position.
-      moveToAndUpdate(rack.diffX(currX, storageTarget.xOffset), rack.diffY(currY, storageTarget.yOffset));
+      moveToAndUpdate(rack.diffX(currX, storageTarget->xOffset), rack.diffY(currY, storageTarget->yOffset));
       commandSentStorage = true;
     }
     else if (replyCount < commandSent){
@@ -169,7 +184,7 @@ void fsm::resetDepositLoop() {
       // Add one item to the storage channel.
       storageSwitch = 0;
       commandSentStorage = false;
-      storageTarget.addOneItem();
+      storageTarget->addOneItem();
     }
   }
 }
@@ -194,33 +209,33 @@ void fsm::fsmMain() {
     // reset the system variables.
     systemReset();
   }
-  else {
-    communicationCheck(); // This part updates the rack's state.
-    if(storageMode) {
-      // Rack in storage mode. Contains items of a certain number in the buffer1.
-      if (storageTarget == rackManager.NONE) {
-        // find the next free storage channel.
-        storageTarget = rack.nextFree(itemType);
-        // TO DO error checking, if no more free storage, activate seesaw!
-      }
-      else {
-        storageLoop();
-      }
-    }
-    else if(retrieveMode) {
-      // In retrieveMode when robot is coming to collect the items.
-      if(retrieveTarget == rackManager.NONE) {
-        retrieveTarget = rack.locateChannel(itemType);
-        // if retrieveTarget is still NULL, error as item not inside.
-        // Send worker to insert into rack.
-      }
-      else {
-        retrieveLoop();
-      }
-    }
-    else if(depositMode) {
-      // For robot to deposit the items.
-      depositLoop();
-    }
-  }
+  // else {
+  //   communicationCheck(); // This part updates the rack's state.
+  //   if(storageMode) {
+  //     // Rack in storage mode. Contains items of a certain number in the buffer1.
+  //     if (storageTarget == nullptr) {
+  //       // find the next free storage channel.
+  //       storageTarget = rack.nextFree(itemType);
+  //       // TO DO error checking, if no more free storage, activate seesaw!
+  //     }
+  //     else {
+  //       storageLoop();
+  //     }
+  //   }
+  //   else if(retrieveMode) {
+  //     // In retrieveMode when robot is coming to collect the items.
+  //     if(retrieveTarget == nullptr) {
+  //       retrieveTarget = rack.locateChannel(itemType);
+  //       // if retrieveTarget is still NULL, error as item not inside.
+  //       // Send worker to insert into rack.
+  //     }
+  //     else {
+  //       retrieveLoop();
+  //     }
+  //   }
+  //   else if(depositMode) {
+  //     // For robot to deposit the items.
+  //     depositLoop();
+  //   }
+  // }
 }

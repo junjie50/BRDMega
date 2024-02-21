@@ -1,3 +1,8 @@
+
+/*
+ '$J=' to indicate the jog
+*/
+
 // Command
 #define XDIR  1
 #define YDIR  1

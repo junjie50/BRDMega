@@ -75,17 +75,17 @@ bool rackManager::inStationary(String label) {
 // Function to get the channel for storing this label.
 // nextFree prioritise storing in the stationary first,
 // if label is already in stationary, place it in seesaw if there is space.
-Channel rackManager::nextFree(String label) {
+Channel* rackManager::nextFree(String label) {
   if (!inStationary(label)) {
     for (int i = 0; i < 2; i++) {
       if(stationaries[i].label == "") {
-        return stationaries[i];
+        return &stationaries[i];
       }
     }
   }
   for (int i = 0; i < 4; i++) {
     if(seesaws[i].label == "") {
-      return seesaws[i];
+      return &seesaws[i];
     }
   }
   return nullptr;
@@ -93,17 +93,17 @@ Channel rackManager::nextFree(String label) {
 
 
 // Function to get the channel containing the label.
-Channel rackManager::locateChannel(String label) {
+Channel* rackManager::locateChannel(String label) {
   if(inSeesaw(label)) {
     for(int i = 0; i < 4; i++) {
       if (seesaws[i].label == label){
-        return seesaws[i];
+        return &seesaws[i];
       }
     }
   }
   if(inStationary(label)){
     for(int i = 0; i < 2; i++) {
-      return stationaries[i];
+      return &stationaries[i];
     }
   }
   return nullptr;

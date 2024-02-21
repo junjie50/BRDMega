@@ -51,6 +51,9 @@ class fsm {
 
     // Prepare cone for the arm.
     bool prepareState = false;
+
+    // For error handling
+    bool errorState = false;
     
     
     // Logical Flags
@@ -85,6 +88,5 @@ class fsm {
 
     // For keeping track of time.
     unsigned long timeStart;
-
 };
 #endif
