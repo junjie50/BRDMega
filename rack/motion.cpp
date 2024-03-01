@@ -2,7 +2,7 @@
 #include "motion.h"
 
 
-//Higher abstraction
+// Higher abstraction
 // Movement plus direction change
 void motionManager::moveY(int amt) {
   if (amt < 0) {

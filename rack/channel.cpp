@@ -20,5 +20,5 @@ void Channel::addOneItem() {
 }
 
 bool Channel::empty() {
-  return numberOfItems == 1;
+  return numberOfItems == 0;
 }

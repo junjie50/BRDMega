@@ -19,7 +19,7 @@ class fsm {
     void setUp();
     void jogSliderUpUntilTouch();
     void systemReset();
-    void communicationCheck();
+    void stateUpdate();
     String getGrblReply();
     void resetMainFlags();
     void fsmMain();
@@ -41,6 +41,9 @@ class fsm {
     int currZ = 0;
     int commandSent = 0;
     int replyCount = 0;
+
+    //Communication variables
+    String nextCmd;
 
     // Deposit loop logic flags
     bool depositMode = false;

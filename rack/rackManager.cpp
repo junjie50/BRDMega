@@ -78,13 +78,13 @@ bool rackManager::inStationary(String label) {
 Channel* rackManager::nextFree(String label) {
   if (!inStationary(label)) {
     for (int i = 0; i < 2; i++) {
-      if(stationaries[i].label == "") {
+      if(stationaries[i].empty()) {
         return &stationaries[i];
       }
     }
   }
   for (int i = 0; i < 4; i++) {
-    if(seesaws[i].label == "") {
+    if(seesaws[i].empty()) {
       return &seesaws[i];
     }
   }

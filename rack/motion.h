@@ -10,9 +10,9 @@
 #define XAMT  0.1 * XDIR
 #define YAMT  0.1 * YDIR
 #define ZAMT 0.1 * YDIR
-#define JOGAMT  0.2
+#define JOGAMT 0.2
 #define MOTOR1 'X'
-#define MOTOR2  'Y'
+#define MOTOR2 'Y'
 #define MOTOR3 'Z'
 #define XMOTOR 0 
 #define YMOTOR 1 // RMB TO CHANGE FOR ACTUAL TESTING

@@ -14,11 +14,12 @@ On boot reset function for the robot.
 void fsm::systemReset() {
   if(!xReset) {
     motion.jogSliderRight();
-    if (sensor.sensorActivated(TOUCHXNUMBER)) {
+    if(sensor.sensorActivated(TOUCHXNUMBER)) {
       motion.motionStop();
       xReset = true;
     }
   }
+
   if(xReset) {
     systemReady = true;
   }
@@ -52,18 +53,17 @@ Communication utility functions.
 
 // This function checks for the command and update
 // the state of the rack.
-void fsm::communicationCheck() {
-  String next = comms.nextCommand();
-  if(next.length() != 0) {
+void fsm::stateUpdate() {
+  if(nextCmd.length() != 0) {
     Serial.println(next);
   }
-  if(next == "deposit") {
+  if(nextCmd == "deposit") {
     depositMode = true;
     resetDepositLoop();
     // HARDCODE ITEM TYPE HERE
     itemType = 'A';
   }
-  else if(next == "retrieve") {
+  else if(nextCmd == "retrieve") {
     retrieveMode = true;
     readyForDocking = false;
     // HARDCODE ITEM TYPE HERE
@@ -75,7 +75,7 @@ void fsm::communicationCheck() {
 }
 
 // Function used to filter the reply from grbl.
-String fsm::getGrblReply() {
+String fsm::getGrblReply(){
   String grblMSG = Serial1.readString();
   String result = "";
   for(char ch: grblMSG) {
@@ -95,6 +95,10 @@ void fsm::waitForReply() {
     }
   }
 }
+
+/************************************************
+Communication utility functions.
+ ***********************************************/
 
 
 /************************************************
@@ -189,8 +193,6 @@ void fsm::resetDepositLoop() {
   }
 }
 
-
-
 void fsm::retrieveLoop() {
   storageSwitch = 0;
   commandSentStorage = false;
@@ -205,37 +207,39 @@ void fsm::resetMainFlags() {
  * This is the starting point of the program
  ***********************************************/
 void fsm::fsmMain() {
+  nextCmd = comms.nextCommand();
+
   if(!systemReady) {
     // reset the system variables.
     systemReset();
   }
-  // else {
-  //   communicationCheck(); // This part updates the rack's state.
-  //   if(storageMode) {
-  //     // Rack in storage mode. Contains items of a certain number in the buffer1.
-  //     if (storageTarget == nullptr) {
-  //       // find the next free storage channel.
-  //       storageTarget = rack.nextFree(itemType);
-  //       // TO DO error checking, if no more free storage, activate seesaw!
-  //     }
-  //     else {
-  //       storageLoop();
-  //     }
-  //   }
-  //   else if(retrieveMode) {
-  //     // In retrieveMode when robot is coming to collect the items.
-  //     if(retrieveTarget == nullptr) {
-  //       retrieveTarget = rack.locateChannel(itemType);
-  //       // if retrieveTarget is still NULL, error as item not inside.
-  //       // Send worker to insert into rack.
-  //     }
-  //     else {
-  //       retrieveLoop();
-  //     }
-  //   }
-  //   else if(depositMode) {
-  //     // For robot to deposit the items.
-  //     depositLoop();
-  //   }
-  // }
+  else {
+    stateUpdate();
+    if(storageMode) {
+      // Rack in storage mode. Contains items of a certain number in the buffer1.
+      if (storageTarget == nullptr) {
+        // find the next free storage channel.
+        storageTarget = rack.nextFree(itemType);
+        // TO DO error checking, if no more free storage, activate seesaw!
+      }
+      else {
+        storageLoop();
+      }
+    }
+    else if(retrieveMode) {
+      // In retrieveMode when robot is coming to collect the items.
+      if(retrieveTarget == nullptr) {
+        retrieveTarget = rack.locateChannel(itemType);
+        // if retrieveTarget is still NULL, error as item not inside.
+        // Send worker to insert into rack.
+      }
+      else {
+        retrieveLoop();
+      }
+    }
+    else if(depositMode) {
+      // For robot to deposit the items.
+      depositLoop();
+    }
+  }
 }

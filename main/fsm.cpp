@@ -4,7 +4,7 @@
 #include <std_msgs/String.h>
 #include <std_msgs/Int32.h>
 
-//######################### COMMUNICATION SETUP ######################### //
+// ######################### COMMUNICATION SETUP ######################### //
 ros::NodeHandle  nh;
 String command;
 bool dataIn;
@@ -16,7 +16,9 @@ void callback( const std_msgs::String& msg){
 
 std_msgs::Int32 coneNum_msg;
 std_msgs::String response_msg;
+std_msgs::String feedback_msg;
 ros::Publisher pubCone("wp1mag_coneNum", &coneNum_msg);
+ros::Publisher pubFeed("wp1mag_feedback", &feedback_msg);
 ros::Publisher pubRes("wp1mag_response", &response_msg);
 ros::Subscriber<std_msgs::String> sub("wp1mag_command", callback);
 
@@ -24,6 +26,7 @@ void commSetUp() {
   nh.initNode();
   nh.advertise(pubCone);
   nh.advertise(pubRes);
+  nh.advertise(pubFeed);
   nh.subscribe(sub);
 
   nh.spinOnce();
@@ -56,12 +59,64 @@ void sendCone(int number) {
   coneNum_msg.data = number;
   pubCone.publish( &coneNum_msg );
 }
+
+void sendFeedback(const char*  message) {
+  feedback_msg.data = message;
+  pubFeed.publish( &feedback_msg );
+}
 //######################### COMMUNICATION END ######################### //
 
 
 
-//######################### UTILITY FUNCTIONS ######################### //
+// ######################### UTILITY FUNCTIONS ######################### //
+void fsm::stateUpdate(){
+  if(nextCmd == "StoreCone") { // Received Command.
+    if(!sensors.armEntryEmpty()) {
+      entry1 = true;
+      idleState = false;
+      itemInSystem += 1;
+      systemMode = 1;
+      itemType = 1;
+    }
+  }
+  else if(nextCmd == "PrepareCone") {
+    entry3 = true;
+    idleState = false;
+    itemInSystem -= 1;
+    systemMode = 0;
+    itemType = 1;
+  }
+  else if(nextCmd == "unload") {
+    unloadState = true;
+    idleState = false;
 
+    timeStart = millis() - 1500;
+  }
+  else if(nextCmd == "collect") {
+    collectState = true;
+    idleState = false;
+    itemType = 1;
+
+    timeStart = millis() - 1500;
+    systemMode = 0;
+  }
+}
+
+void fsm::override(){
+  if(nextCmd == "Stop") {
+    motion.motionStop();
+    stopState = true;
+  }
+  else if(nextCmd == "Reset") {
+    stopState = false;
+  }
+}
+
+void fsm::replyUpdate() {
+  if(nextCmd == "NumCone"){
+    sendCone(itemInSystem);
+  }
+}
 
 void fsm::setUp() {
   commSetUp();
@@ -135,45 +190,20 @@ void fsm::resetStates() {
   systemMode = -1;
 }
 
+void fsm::sendFeedbackStatus(const char* msg) {
+  unsigned long curr = millis();
+  if(curr - timePrevFeed > 1000) {
+    timePrevFeed = curr;
+    sendFeedback(msg);
+  }
+}
+
 //######################### END UTILITY FUNCTIONS #########################//
 
 //######################### START LOGIC FUNCTIONS #########################//
 // Function to call during the idle mode of the machine.
 // Robot should always be entering a certain systemStatus
 void fsm::idle() {
-  if(nextCmd == "StoreCone") { // Received Command.
-    if(!sensors.armEntryEmpty()) {
-      entry1 = true;
-      idleState = false;
-      itemInSystem += 1;
-      systemMode = 1;
-      itemType = 1;
-    }
-  }
-  else if(nextCmd == "PrepareCone") {
-    entry3 = true;
-    idleState = false;
-    itemInSystem -= 1;
-    systemMode = 0;
-    itemType = 1;
-  }
-  else if(nextCmd == "unload") {
-    unloadState = true;
-    idleState = false;
-    systemStatus = 12;
-
-    timeStart = millis() - 1500;
-  }
-  else if(nextCmd == "collect") {
-    collectState = true;
-    idleState = false;
-    itemType = 1;
-    timeStart = millis() - 1500;
-    systemMode = 0;
-    systemStatus = 2;
-  }
-
-
   // During idle mode, if system mode is activated, reset the slider for arm.
   // systemMode != -1 means the system is busy handling work.
   if(systemMode == 0) {
@@ -241,13 +271,12 @@ void fsm::flowLogicSecond() {
 
         // Move the item pass the last sensor.
         motion.moveArmBeltRight(PASS_SENSOR);
-        itemForDeposit += 1;
 
         // Update that we are done.
         sendResponse("done");
 
         // reset the systemMode of the robot when the system is full.
-        if(itemForDeposit == 4) {
+        if(itemInSystem == 4) {
           systemMode = -1;
         }
       }
@@ -287,19 +316,16 @@ void fsm::flowLogicThird() {
 void fsm::flowLogic() {
   // Code flow for when object has been detected.
   if(entry1) {
-    // Serial.println("In first tray");
+    sendFeedbackStatus("In arm belt");
     flowLogicFirst();
   }
   else if(entry2) {
-    // Serial.println("In second tray");
+    sendFeedbackStatus("In buffer belt");
     flowLogicSecond();
   }
   else if(entry3) {
-    // Serial.println("In third tray");
+    sendFeedbackStatus("In rack belt");
     flowLogicThird();
-  }
-  else {
-    // logic error
   }
 }
 
@@ -312,16 +338,13 @@ void fsm::unload() {
     motion.jogArmBeltRight();
     if(millis() - timeStart > 1500 && !sensors.rackEntryEmpty()) { 
       // allow the cone to go pass the current sensor.
-      itemForDeposit -= 1;
+      itemInSystem -= 1;
       timeStart = millis();
-      if(itemForDeposit == 0) {
-      // finished depositing the cones.
+      if(itemInSystem == 0) {
+        // finished depositing the cones.
         unloadState = false;
         idleState = true;
-        itemInSystem = 0;
-        systemStatus = 0;
         motion.motionStop();
-
         // Unloading the rest of the cones.
         motion.moveArmBeltRight(UNLOAD_AMT);
         // TODO: Broadcast to the robot that we are done depositing.
@@ -344,7 +367,6 @@ void fsm::collect() {
       // finished depositing the cones
         collectState = false;
         idleState = true;
-        systemStatus = 1; // rack full;
         motion.motionStop();
       }
     }
@@ -353,12 +375,18 @@ void fsm::collect() {
 
 //######################THIS PART RUNS IN THE LOOP######################//
 void fsm::mainLogic() {
-  // Error handling by pass
-  if(errorState) {return;} 
-
+  //Update command at the start of the loop.
   nextCmd = nextCommand();
-  sendCone(itemInSystem);
-  if(!systemReady) {
+  //Overrides the existing states via stopState var.
+  override();
+  //respond to certain commands.
+  replyUpdate();
+
+  if(stopState){
+    //Critical, received command to stop everything.s
+    delay(5);
+  }
+  else if(!systemReady) {
     resetMachine();
     delay(5);
   }
@@ -366,6 +394,8 @@ void fsm::mainLogic() {
     idle();
   }
   else{
+    //Update state according to the next command.
+    stateUpdate();
     flowLogic();
   }
 }

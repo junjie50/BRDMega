@@ -22,6 +22,8 @@ class fsm {
     void resetTrayThree();
     void resetUnloading();
     void resetStates();
+    void override();
+    void sendFeedbackStatus(const char* msg);
 
     // Logic control
     void idle(); 
@@ -29,7 +31,8 @@ class fsm {
     void flowLogicSecond();
     void flowLogicThird();
     void flowLogic();
-    void communicationUpdate();
+    void stateUpdate();
+    void replyUpdate();
     void unload();
     void collect();
     void mainLogic();
@@ -58,7 +61,6 @@ class fsm {
     
     // Logical Flags
     int systemMode = -1; // 1 means taking item from arm 0 means taking item from rack.
-    int systemStatus = 0;
     bool idleState = true;
     bool entry1 = false;
     bool exit1 = true;
@@ -67,6 +69,9 @@ class fsm {
     bool exit3 = true;
     int itemInSystem = 0;
     int itemType = 0;
+
+    // Broadcast timing
+    unsigned long prevBroadcast;
 
     // For deposit
     int itemForDeposit = 0;
@@ -87,6 +92,12 @@ class fsm {
     int endTrayY = 1;
 
     // For keeping track of time.
-    unsigned long timeStart;
+    unsigned long timeStart = 0;
+
+    // For feedback time
+    unsigned long timePrevFeed = 0;
+
+    // STOP MODE
+    bool stopState = false;
 };
 #endif

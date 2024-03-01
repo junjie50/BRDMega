@@ -12,7 +12,6 @@
 #define TOUCHXNUMBER 6
 #define TOUCHYNUMBER 7
 
-
 /**
  * This class manages the functionality of the sensor.
  */
@@ -28,5 +27,4 @@ class sensorManager {
   private:
     byte sensors[8] = {SENSOR1, SENSOR2, SENSOR3, SENSOR4, SENSOR5, SENSOR6, TOUCHX, TOUCHY};
 };
-
 #endif
