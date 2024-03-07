@@ -7,33 +7,58 @@
 // ######################### COMMUNICATION SETUP ######################### //
 ros::NodeHandle  nh;
 String command;
+String commandRack;
+String coneList;
 bool dataIn;
+bool dataInRack;
+bool dataInConeList
 
 void callback( const std_msgs::String& msg){
   dataIn = true;
   command = msg.data;
 }
 
+void callbackRack( const std_msgs::String& msg){
+  dataInRack = true;
+  commandRack = msg.data;
+}
+
+void callbackConeList( const std_msgs::String& msg){
+  dataInConeList = true;
+  coneList = msg.data;
+}
+
+
 std_msgs::Int32 coneNum_msg;
 std_msgs::String response_msg;
+std_msgs::String response_msg_rack;
 std_msgs::String feedback_msg;
+std_msgs::String conelist_msg;
 ros::Publisher pubCone("wp1mag_coneNum", &coneNum_msg);
 ros::Publisher pubFeed("wp1mag_feedback", &feedback_msg);
 ros::Publisher pubRes("wp1mag_response", &response_msg);
+ros::Publisher pubResRack("wp1rack_response", &response_msg_rack);
+ros::Subscriber<std_msgs::String> subConeList("wp1_conelist", callbackConeList);
 ros::Subscriber<std_msgs::String> sub("wp1mag_command", callback);
+ros::Subscriber<std_msgs::String> subRack("wp1rack_command", callbackRack);
 
 void commSetUp() {
   nh.initNode();
   nh.advertise(pubCone);
   nh.advertise(pubRes);
+  nh.advertise(pubResRack);
   nh.advertise(pubFeed);
   nh.subscribe(sub);
+  nh.subscribe(subRack);
 
   nh.spinOnce();
 }
 
-String nextCommand() {
+void updateRosSerial() {
   nh.spinOnce();
+}
+
+String nextCommand() {
   if(dataIn) {
     nh.loginfo("get data");
     dataIn = false;
@@ -44,6 +69,30 @@ String nextCommand() {
       return "";
     }
   } 
+  else{
+    nh.loginfo("not get data");
+    return "";
+  }
+}
+
+String nextCommandRack() {
+  if(dataInRack) {
+    nh.loginfo("get data rack");
+    dataInRack = false;
+    return commandRack;
+  }
+  else{
+    nh.loginfo("not get data");
+    return "";
+  }
+}
+
+String nextConeList() {
+  if(dataInConeList) {
+    nh.loginfo("get data cone list");
+    dataInConeList = false;
+    return coneList;
+  }
   else{
     nh.loginfo("not get data");
     return "";
@@ -63,6 +112,11 @@ void sendCone(int number) {
 void sendFeedback(const char*  message) {
   feedback_msg.data = message;
   pubFeed.publish( &feedback_msg );
+}
+
+void sendRackResponse(const char*  message) {
+  response_msg_rack.data = message;
+  pubResRack.publish(&response_msg_rack);
 }
 //######################### COMMUNICATION END ######################### //
 
@@ -89,38 +143,54 @@ void fsm::stateUpdate(){
   else if(nextCmd == "unload") {
     unloadState = true;
     idleState = false;
-
-    timeStart = millis() - 1500;
   }
   else if(nextCmd == "collect") {
     collectState = true;
     idleState = false;
-    itemType = 1;
-
-    timeStart = millis() - 1500;
     systemMode = 0;
+    collectCommandSent = 0;
+    itemDectected = 0;
+    collectStartTime = millis()-TIME_TO_PASS;
   }
 }
 
-void fsm::override(){
+void fsm::override() {
   if(nextCmd == "Stop") {
     motion.motionStop();
     stopState = true;
   }
-  else if(nextCmd == "Reset") {
+  else if(nextCmd == "Continue") {
     stopState = false;
+  }
+  else if(nextCmd == "Reset") {
+    restart();
   }
 }
 
+// replying to the updates of the cone.
+// send feedback to the main controller.
 void fsm::replyUpdate() {
   if(nextCmd == "NumCone"){
     sendCone(itemInSystem);
+  }
+  
+  if(!idleState) {
+    if(entry1) {
+      sendFeedbackStatus("In arm belt");
+    }
+    else if(entry2) {
+      sendFeedbackStatus("In moving belt");
+    }
+    else if(entry3) {
+      sendFeedbackStatus("In rack belt");
+    }
   }
 }
 
 void fsm::setUp() {
   commSetUp();
   sensors.sensorSetUp();
+  wifi.setUp();
 }
 
 // Jog slider down to touch sensor, set the position control variable.
@@ -183,11 +253,52 @@ void fsm::resetTrayThree() {
     trayThreeReady = false;
 }
 
-void fsm::resetStates() {
-  resetTrayOne();
-  resetTrayTwo();
-  resetTrayThree();
-  systemMode = -1;
+void fsm::restart() {
+    // Flags for resetting system at the starting of robot.
+    // Reset the trayY slider.
+    trayYReset = false;
+
+    // Flags used to indicate that the system is ready for main logic loop.
+    systemReady = false;
+
+    // Prepare cone for the arm.
+    prepareState = false;
+
+    // For error handling
+    errorState = false;
+    
+
+    // Logical Flags
+    systemMode = -1; // 1 means taking item from arm 0 means taking item from rack.
+    idleState = true;
+    entry1 = false;
+    exit1 = true;
+    entry2 = false;
+    entry3 = false;
+    exit3 = true;
+    itemInSystem = 0;
+    itemType = 0;
+
+    // For collection
+    collectState = false;
+
+    // For unloading to the rack
+    unloadState = false;
+
+    // For storage
+    trayThreeReady = false;
+    
+    // Int side = 0 or 1 for y tray
+    // bottomtray is y = 0 while upper tray with the arm is y = 1.
+    currTrayY = 0;
+    startTrayY = 0;
+    endTrayY = 1;
+
+    // For feedback time
+    timePrevFeed = 0;
+
+    // STOP MODE
+    stopState = false;
 }
 
 void fsm::sendFeedbackStatus(const char* msg) {
@@ -315,16 +426,19 @@ void fsm::flowLogicThird() {
 
 void fsm::flowLogic() {
   // Code flow for when object has been detected.
-  if(entry1) {
-    sendFeedbackStatus("In arm belt");
+  if(collectState) {
+    collect();
+  }
+  else if(unloadState) {
+    unload();
+  }
+  else if(entry1) {
     flowLogicFirst();
   }
   else if(entry2) {
-    sendFeedbackStatus("In buffer belt");
     flowLogicSecond();
   }
   else if(entry3) {
-    sendFeedbackStatus("In rack belt");
     flowLogicThird();
   }
 }
@@ -332,53 +446,73 @@ void fsm::flowLogic() {
 // Function is called when it is safe to unload and given the command from the robot.
 void fsm::unload() {
   if(currTrayY != startTrayY) {
-    jogSliderDownUntilTouch();//sets currTrayY to down
+    jogSliderDownUntilTouch(); //sets currTrayY to down
   }
   else {
     motion.jogArmBeltRight();
-    if(millis() - timeStart > 1500 && !sensors.rackEntryEmpty()) { 
-      // allow the cone to go pass the current sensor.
-      itemInSystem -= 1;
-      timeStart = millis();
-      if(itemInSystem == 0) {
-        // finished depositing the cones.
-        unloadState = false;
-        idleState = true;
-        motion.motionStop();
-        // Unloading the rest of the cones.
-        motion.moveArmBeltRight(UNLOAD_AMT);
-        // TODO: Broadcast to the robot that we are done depositing.
-      }
-    }
   }
 }
 
 void fsm::collect() {
   if(currTrayY != startTrayY) {
-    jogSliderDownUntilTouch();//sets currTrayY to down
+    jogSliderDownUntilTouch(); //sets currTrayY to down
   }
   else {
-    motion.jogArmBeltLeft();
-    if(millis() - timeStart > 1500 && !sensors.rackEntryEmpty()) {
-      // allow the cone to go pass the current sensor.
-      itemInSystem += 1;
-      timeStart = millis(); // Reset the time start.
-      if(itemInSystem == 4) {
-      // finished depositing the cones
-        collectState = false;
-        idleState = true;
-        motion.motionStop();
+    if(millis() - collectStart > TIME_TO_PASS) {
+      collectStart = millis();
+      if(!sensors.rackEntryEmpty()) {
+        motion.moveArmBeltLeft(PASS_SENSOR);
+        itemInSystem += 1;
+        if(itemInSystem == fsmConeListCount) {
+          collectState = false;
+          idleState = true;
+        }
       }
     }
   }
 }
 
+// wififorwarder forwards the packages between robot and the rack
+// Peek into package to obtain information for the magazine as well.
+void fsm::wifiForwarder() {
+  // Ensure connection at the start of each loop.
+  wifi.connectWifi(); 
+
+  // Command from main robot to rack.
+  nextCmdRack = nextCommandRack();
+  nextConeListStr = nextConeList();
+  if(nextCmdRack.length() > 0) {
+    wifi.sendMessageRack(nextCmdRack+nextConeListStr);
+  }
+
+  if(nextConeList.length() > 0) {
+  }
+    int start = 0;
+    int next = nextConeListStr.indexOf(',');
+    while(next != -1) {
+      fsmConeList[fsmConeListCount] = nextConeListStr.substring(next + 1, next + 4);
+      fsmConeListCount += 1;
+      start = next + 1;
+      next = nextConeListStr.indexOf(',');
+    }
+  }
+
+  // Response from rack to main robot.
+  String response = wifi.nextMessage();
+  if(response.length() > 0){
+    sendRackResponse(response.c_str());
+  }
+}
+
 //######################THIS PART RUNS IN THE LOOP######################//
 void fsm::mainLogic() {
+  wifiForwarder();
+
   //Update command at the start of the loop.
   nextCmd = nextCommand();
   //Overrides the existing states via stopState var.
   override();
+
   //respond to certain commands.
   replyUpdate();
 

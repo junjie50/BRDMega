@@ -2,13 +2,15 @@
 #define LEFT_AMT 25
 #define UNLOAD_AMT 100
 #define PASS_SENSOR 35
+#define TIME_TO_PASS 1500
 
 #ifndef fsmClass_h
 #define fsmClass_h
 #include "Arduino.h"
 #include "sensor.h"
 #include "motion.h"
-#include "comms.h"
+#include "wifiManager.h"
+#include <vector>
 
 class fsm {
   public:
@@ -21,9 +23,10 @@ class fsm {
     void resetTrayTwo();
     void resetTrayThree();
     void resetUnloading();
-    void resetStates();
+    void restart();
     void override();
     void sendFeedbackStatus(const char* msg);
+    void wifiForwarder();
 
     // Logic control
     void idle(); 
@@ -40,10 +43,15 @@ class fsm {
   private:
     sensorManager sensors;
     motionManager motion;
-    commsManager comms;
+    wifiManager wifi;
 
     // Communication variables
     String nextCmd;
+    String nextCmdRack;
+    String nextConeList;
+
+    String fsmConeList[4];
+    String fsmConeListCount = 0;
 
     // Flags for resetting system at the starting of robot.
     // Reset the trayY slider.
@@ -70,14 +78,11 @@ class fsm {
     int itemInSystem = 0;
     int itemType = 0;
 
-    // Broadcast timing
-    unsigned long prevBroadcast;
-
-    // For deposit
-    int itemForDeposit = 0;
-
     // For collection
     bool collectState = false;
+    int collectCommandSent = 0;
+    int itemDectectedRack = 0;
+    unsigned long collectStartTime = 0;
 
     // For unloading to the rack
     bool unloadState = false;
@@ -90,9 +95,6 @@ class fsm {
     int currTrayY = 0;
     int startTrayY = 0;
     int endTrayY = 1;
-
-    // For keeping track of time.
-    unsigned long timeStart = 0;
 
     // For feedback time
     unsigned long timePrevFeed = 0;

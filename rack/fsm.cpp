@@ -54,20 +54,34 @@ Communication utility functions.
 // This function checks for the command and update
 // the state of the rack.
 void fsm::stateUpdate() {
+  String firstTwo = nextCmd.substring(0,2);
   if(nextCmd.length() != 0) {
     Serial.println(next);
   }
-  if(nextCmd == "deposit") {
+  if(firstTwo == "de") {
     depositMode = true;
+    int start = 0;
+    int ind = nextCmd.indexOf(',', start);
+    while(start < nextCmd.length() && ind != -1) {
+      target[targetLength] = nextCmd.charAt(ind + 1);
+      start = ind + 2;
+      targetLength += 1;
+      int ind = nextCmd.indexOf(',', start);
+    }
     resetDepositLoop();
-    // HARDCODE ITEM TYPE HERE
-    itemType = 'A';
   }
-  else if(nextCmd == "retrieve") {
+  else if(nextCmd == "re") {
     retrieveMode = true;
     readyForDocking = false;
-    // HARDCODE ITEM TYPE HERE
-    itemType = 'A';
+    depositMode = true;
+    int start = 0;
+    int ind = nextCmd.indexOf(',', start);
+    while(start < nextCmd.length() && ind != -1) {
+      target[targetLength] = nextCmd.charAt(ind);
+      start = ind + 1;
+      targetLength += 1;
+      int ind = nextCmd.indexOf(',', start);
+    }
   }
   else if(!rack.robot.empty()) {
     storageMode = true;
@@ -117,7 +131,7 @@ void fsm::depositLoop() {
     }
     else{
       // SEND A MESSAGE TO THE ROBOT TO DOCK AND DEPOSIT.
-      comms.sendMessage("ready for deposit");
+      comms.sendMessage("done");
       readyForDocking = true;
     }
   }
@@ -126,15 +140,15 @@ void fsm::depositLoop() {
     // TODO: Add in function to allow deposit of 4 items.
     // First sensor sense item, move belt by a certain amount.
     // Until 4 items are deposited.
-    if(!dockingSetUp) {
-      rack.robot.label = itemType;
-      dockingSetUp = true;
+    if(sensor.bufferEntryActivated()) {
+      bufferLength += 1;
     }
-    else {
-      // Ending the deposit mode loop
-      rack.robot.numberOfItems = 4;
+
+    if(bufferLength == targetLength() {
       depositMode = false;
     }
+
+    
   }
 }
 

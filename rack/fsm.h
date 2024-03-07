@@ -55,12 +55,16 @@ class fsm {
     int storageSwitch = 0;
     Channel* storageTarget = nullptr;
     bool commandSentStorage = false;
-
+    
     // Retrieve loop logic flags
     bool retrieveMode = false;
     Channel* retrieveTarget = nullptr;
     
     // System variables
     String itemType = "";
+    char buffer[4] = "";
+    int bufferLength = 0;
+    char target[4] = "";
+    int targetLength = 0;
 };
 #endif

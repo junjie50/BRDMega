@@ -22,3 +22,7 @@ bool sensorManager::sensorActivated(int num) {
 int sensorManager::readSensor(int num){
   return digitalRead(sensors[num]);
 }
+
+bool sensorManager::bufferEntryActivated(){
+  return sensorActivated(BUFFERENTRY]);
+}
