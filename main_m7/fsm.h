@@ -48,10 +48,10 @@ class fsm {
     // Communication variables
     String nextCmd;
     String nextCmdRack;
-    String nextConeList;
+    String nextConeListStr;
 
     String fsmConeList[4];
-    String fsmConeListCount = 0;
+    int fsmConeListCount = 0;
 
     // Flags for resetting system at the starting of robot.
     // Reset the trayY slider.
@@ -80,12 +80,11 @@ class fsm {
 
     // For collection
     bool collectState = false;
-    int collectCommandSent = 0;
-    int itemDectectedRack = 0;
     unsigned long collectStartTime = 0;
 
     // For unloading to the rack
     bool unloadState = false;
+    unsigned long unloadStartTime = 0;
 
     // For storage
     bool trayThreeReady = false;

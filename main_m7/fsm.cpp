@@ -11,7 +11,7 @@ String commandRack;
 String coneList;
 bool dataIn;
 bool dataInRack;
-bool dataInConeList
+bool dataInConeList;
 
 void callback( const std_msgs::String& msg){
   dataIn = true;
@@ -69,10 +69,6 @@ String nextCommand() {
       return "";
     }
   } 
-  else{
-    nh.loginfo("not get data");
-    return "";
-  }
 }
 
 String nextCommandRack() {
@@ -81,10 +77,6 @@ String nextCommandRack() {
     dataInRack = false;
     return commandRack;
   }
-  else{
-    nh.loginfo("not get data");
-    return "";
-  }
 }
 
 String nextConeList() {
@@ -92,10 +84,6 @@ String nextConeList() {
     nh.loginfo("get data cone list");
     dataInConeList = false;
     return coneList;
-  }
-  else{
-    nh.loginfo("not get data");
-    return "";
   }
 }
 
@@ -140,17 +128,26 @@ void fsm::stateUpdate(){
     systemMode = 0;
     itemType = 1;
   }
-  else if(nextCmd == "unload") {
-    unloadState = true;
-    idleState = false;
+  else if(nextCmd == "EmptyMag") {
+    if(itemInSystem > 0){
+      unloadState = true;
+      idleState = false;
+      unloadStartTime = millis()-TIME_TO_PASS;
+    }
+    else{
+      sendResponse("done");
+    }
   }
-  else if(nextCmd == "collect") {
-    collectState = true;
-    idleState = false;
-    systemMode = 0;
-    collectCommandSent = 0;
-    itemDectected = 0;
-    collectStartTime = millis()-TIME_TO_PASS;
+  else if(nextCmd == "GetConeMag") {
+    if(fsmConeListCount > 0) {
+      collectState = true;
+      idleState = false;
+      systemMode = 0;
+      collectStartTime = millis()-TIME_TO_PASS;
+    }
+    else {
+      sendResponse("done");
+    }
   }
 }
 
@@ -190,32 +187,37 @@ void fsm::replyUpdate() {
 void fsm::setUp() {
   commSetUp();
   sensors.sensorSetUp();
+  motion.motionSetup();
   wifi.setUp();
 }
 
 // Jog slider down to touch sensor, set the position control variable.
 // While moving change the currTray to -1 to indicate invalid position.
 void fsm::jogSliderDownUntilTouch() {
-  motion.jogSliderBeltDown();
-  currTrayY = -1;
   if(sensors.sensorActivated(6)) {
     motion.motionStop();
     currTrayY = startTrayY;
-    motion.moveSliderBeltUp(6);
+    motion.moveSliderBeltUp(15);
     delay(1000);
+  }
+  else {
+    motion.jogSliderBeltDown();
+    currTrayY = -1;
   }
 }
 
 // Jog slider up to touch sensor, set the position control variable.
 // While moving change the currTray to -1 to indicate invalid position.
 void fsm::jogSliderUpUntilTouch() {
-  motion.jogSliderBeltUp();
-  currTrayY = -1;
   if(sensors.sensorActivated(7)) {
     motion.motionStop();
     motion.moveSliderBeltDown(5);
     currTrayY = endTrayY;
     delay(1000);
+  }
+  else {
+    motion.jogSliderBeltUp();
+    currTrayY = -1;
   }
 }
 
@@ -450,6 +452,19 @@ void fsm::unload() {
   }
   else {
     motion.jogArmBeltRight();
+    if(millis() - unloadStartTime > TIME_TO_PASS) {
+      if(!sensors.rackEntryEmpty()) {
+        unloadStartTime = millis();
+        itemInSystem -= 1;
+        if(itemInSystem == 0) {
+          motion.motionStop();
+          motion.moveArmBeltRight(UNLOAD_AMT);
+          unloadState = false;
+          idleState = true;
+          sendResponse("done");
+        }
+      }
+    }
   }
 }
 
@@ -458,14 +473,15 @@ void fsm::collect() {
     jogSliderDownUntilTouch(); //sets currTrayY to down
   }
   else {
-    if(millis() - collectStart > TIME_TO_PASS) {
-      collectStart = millis();
+    if(millis() - collectStartTime > TIME_TO_PASS) {
       if(!sensors.rackEntryEmpty()) {
+        collectStartTime = millis();
         motion.moveArmBeltLeft(PASS_SENSOR);
         itemInSystem += 1;
         if(itemInSystem == fsmConeListCount) {
           collectState = false;
           idleState = true;
+          sendResponse("done");
         }
       }
     }
@@ -485,10 +501,10 @@ void fsm::wifiForwarder() {
     wifi.sendMessageRack(nextCmdRack+nextConeListStr);
   }
 
-  if(nextConeList.length() > 0) {
-  }
+  if(nextConeListStr.length() > 0) {
     int start = 0;
     int next = nextConeListStr.indexOf(',');
+    fsmConeListCount = 0;
     while(next != -1) {
       fsmConeList[fsmConeListCount] = nextConeListStr.substring(next + 1, next + 4);
       fsmConeListCount += 1;
@@ -506,10 +522,15 @@ void fsm::wifiForwarder() {
 
 //######################THIS PART RUNS IN THE LOOP######################//
 void fsm::mainLogic() {
+  // Update the ros serial.
+  updateRosSerial();
+
+  // Forward the data to the rack if need to.
   wifiForwarder();
 
-  //Update command at the start of the loop.
+  //Update command.
   nextCmd = nextCommand();
+  
   //Overrides the existing states via stopState var.
   override();
 

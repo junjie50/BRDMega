@@ -46,6 +46,7 @@ void motionManager::motorJog(int motor_num, double dir) {
   String ops = MOVE_JOG + motor;
   String sign = amount < 0?"-":"+";
   ops += (sign + String(abs(amount), 2) + FEED_RATE + "\n");
+  // Serial.println(ops);
   Serial1.print(ops);
 }
 
@@ -54,6 +55,8 @@ void motionManager::motorMove(int motor_num, double amount) {
   String ops = MOVE_RES + motor;
   String sign = amount < 0?"-":"+";
   ops += (sign + String(abs(amount), 2) + "\n");
+  // Serial.println(ops);
+  // Calling for the motor to move
   Serial1.print(ops);
 }
 

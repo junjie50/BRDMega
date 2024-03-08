@@ -13,7 +13,6 @@
 #define MOVE_RES "G91"
 #define FEED_RATE "F1500"
 
-// Default settings command
 #define XMAXRATESETUP "$110=1500.000"
 #define YMAXRATESETUP "$111=600.000"
 #define ZMAXRATESETUP "$112=700.000"
