@@ -21,6 +21,7 @@ class wifiManager {
     void sendMessage(char message[]);
     void sendMessage(String message);
     void sendMessageRack(String message);
+    
 
   private:
     int status = WL_IDLE_STATUS; // the WiFi radio's status
