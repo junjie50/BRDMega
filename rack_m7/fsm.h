@@ -1,3 +1,5 @@
+#define PASS_SENSOR 50
+
 #ifndef fsmClass_h
 #define fsmClass_h
 #include "Arduino.h"
@@ -9,10 +11,16 @@
 
 class fsm {
   public:
-    void moveToAndUpdate(int x_amt, int y_amt);
+    void moveToChannel(Channel target);
+    void moveToAndUpdate(int x, int y);
     void moveZAndUpdate(int amt);
+
+    void collectOneItem();
+    void storeOneItem();
+
     void resetDepositLoop();
     void resetStorageLoop();
+    void resetRetrieveLoop();
     void depositLoop();
     void storageLoop();
     void retrieveLoop();
@@ -34,13 +42,15 @@ class fsm {
     // Reset system flags
     bool systemReady = false;
     bool readyForDocking = false;
+    bool robotDocked = false;
     bool yReset = false;
     bool xReset = false;
-    int currX = 0;
+    int currX = 1;
     int currY = 0;
     int currZ = 0;
     int commandSent = 0;
     int replyCount = 0;
+    unsigned long lastDetect;
 
     //Communication variables
     String nextCmd;
@@ -52,6 +62,7 @@ class fsm {
 
     // Storage loop logic flags
     bool storageMode = false;
+    String currLabel;
     int storageSwitch = 0;
     Channel* storageTarget = nullptr;
     bool commandSentStorage = false;
@@ -59,12 +70,12 @@ class fsm {
     // Retrieve loop logic flags
     bool retrieveMode = false;
     Channel* retrieveTarget = nullptr;
+    int retrieveSwitch = 0;
+    bool commandSentRetrieve = false;
     
     // System variables
-    String itemType = "";
-    char buffer[4] = "";
-    int bufferLength = 0;
-    char target[4] = "";
-    int targetLength = 0;
+    String coneList[4];
+    int coneLength = 0;
+    int currPtr = 0;
 };
 #endif

@@ -1,10 +1,12 @@
 #include "sensor.h"
 #include "fsm.h"
+#include "comms.h"
 
 /************************************************
 Setup functions for different classes.
  ***********************************************/
 void fsm::setUp() {
+  comms.setup();
   sensor.sensorSetUp();
 }
 
@@ -28,13 +30,26 @@ void fsm::systemReset() {
 /************************************************
 Movement utility functions.
  ***********************************************/
-void fsm::moveToAndUpdate(int x_amt, int y_amt) {
-  if(x_amt != 0) {
+ // Calling this function moves the item to the the targeted channel.
+void fsm::moveToChannel(Channel target) {
+  moveToAndUpdate(target.xOffset, target.yOffset);
+}
+
+void fsm::moveToAndUpdate(int x, int y) {
+  int x_amt = x - currX;
+  int y_amt = y - currY;
+  if(x_amt != 0 && x_amt != 0) {
+    motion.moveXY(x_amt, y_amt);
+    currX += x_amt;
+    currY += y_amt;
+    commandSent += 1;
+  }
+  else if(x_amt != 0) {
     motion.moveX(x_amt);
     currX += x_amt;
     commandSent += 1;
   }
-  if(y_amt != 0){
+  else if(y_amt != 0){
     motion.moveY(y_amt);
     currY += y_amt;
     commandSent += 1;
@@ -42,10 +57,20 @@ void fsm::moveToAndUpdate(int x_amt, int y_amt) {
 }
 
 void fsm::moveZAndUpdate(int amt) {
+  commandSent += 1;
   motion.moveZ(amt);
   currZ += amt;
 }
 
+void fsm::collectOneItem() {
+  motion.collectOneItem();
+  commandSent += 1;
+}
+
+void fsm::storeOneItem() {
+  motion.storeOneItem();
+  commandSent += 1;
+}
 
 /************************************************
 Communication utility functions.
@@ -54,37 +79,37 @@ Communication utility functions.
 // This function checks for the command and update
 // the state of the rack.
 void fsm::stateUpdate() {
-  String firstTwo = nextCmd.substring(0,2);
-  if(nextCmd.length() != 0) {
-    Serial.println(next);
+  // Short circuit and return the circuit.
+  if(nextCmd.length() == 0) {
+    return;
   }
-  if(firstTwo == "de") {
-    depositMode = true;
-    int start = 0;
-    int ind = nextCmd.indexOf(',', start);
-    while(start < nextCmd.length() && ind != -1) {
-      target[targetLength] = nextCmd.charAt(ind + 1);
-      start = ind + 2;
-      targetLength += 1;
-      int ind = nextCmd.indexOf(',', start);
+
+  int start = 0;
+  int end = nextCmd.indexOf(',');
+  String command = nextCmd.substring(0, end);
+  start = end;
+  coneLength = 0;
+  if(command == "PrepareRackEmpty" || command == "PrepareRackGet") {
+    if(command == "PrepareRackEmpty") {
+      depositMode = true;
+      resetDepositLoop();
     }
-    resetDepositLoop();
-  }
-  else if(nextCmd == "re") {
-    retrieveMode = true;
-    readyForDocking = false;
-    depositMode = true;
-    int start = 0;
-    int ind = nextCmd.indexOf(',', start);
-    while(start < nextCmd.length() && ind != -1) {
-      target[targetLength] = nextCmd.charAt(ind);
-      start = ind + 1;
-      targetLength += 1;
-      int ind = nextCmd.indexOf(',', start);
+    else{
+      retrieveMode = true;
+      resetRetrieveLoop();
+    }
+
+    // Updates the coneList according to the message received from magazine.
+    while(start < nextCmd.length()) {
+      coneList[coneLength] = nextCmd.substring(start + 1, start + 4);
+      start = start + 4;
+      coneLength += 1;
     }
   }
-  else if(!rack.robot.empty()) {
-    storageMode = true;
+  else if(command == "EmptyMag" || command == "GetConeMag") {
+    robotDocked = true;
+    lastDetect = millis() - 1500;
+    currPtr = 0;
   }
 }
 
@@ -122,8 +147,11 @@ Communication utility functions.
 void fsm::depositLoop() {
   if(!readyForDocking) {
     if(!commandSentDeposit){
+      // clear serial buffer
+      comms.clearSerial1();
+
       // Move slider to the highest position.
-      moveToAndUpdate(0, rack.diffHighestY(currY));
+      moveToAndUpdate(currX, rack.highest_y);
       commandSentDeposit = true;
     }
     else if (replyCount < commandSent){
@@ -135,29 +163,33 @@ void fsm::depositLoop() {
       readyForDocking = true;
     }
   }
-  else {
-    // Ready for docking procedures.
-    // TODO: Add in function to allow deposit of 4 items.
+  else if(robotDocked) {
     // First sensor sense item, move belt by a certain amount.
-    // Until 4 items are deposited.
-    if(sensor.bufferEntryActivated()) {
-      bufferLength += 1;
+    // Until all items are deposited.
+    if(millis() - lastDetect > 1500 && sensor.bufferEntryActivated()) {
+      lastDetect = millis();
+      // move buffer left by fixed distance.
+      motion.moveRobotBufferLeft(PASS_SENSOR);
+      rack.robot.addOneItem(coneList[currPtr]);
+      currPtr += 1;
+      if(rack.robot.numberOfItems == coneLength) {
+        depositMode = false;
+        comms.sendMessage("done");
+        storageMode = true; // Transit to store the cones.
+      }
     }
-
-    if(bufferLength == targetLength() {
-      depositMode = false;
-    }
-
-    
   }
 }
 
 void fsm::resetDepositLoop() {
+  comms.clearSerial1();
   commandSentDeposit = false;
   dockingSetUp = false;
   readyForDocking = false;
   replyCount = 0;
   commandSent = 0;
+  robotDocked = false;
+  currPtr = 0;
 }
 
 
@@ -168,13 +200,13 @@ void fsm::resetDepositLoop() {
 
  void fsm::storageLoop() {
   if (rack.robot.empty()) {
-    // Finish storage the items.
     storageMode = false;
   }
-  if(storageSwitch == 0) {
+  else if(storageSwitch == 0) {
     if(!commandSentStorage){
       // Move slider to the correct position of the robot channel.
-      moveToAndUpdate(rack.toRobotChannelX(currX), rack.toRobotChannelY(currY));
+      moveToChannel(rack.robot);
+      collectOneItem();
       commandSentStorage = true;
     }
     else if (replyCount < commandSent) {
@@ -185,13 +217,15 @@ void fsm::resetDepositLoop() {
       // Collect one item from the buffer.
       storageSwitch = 1;
       commandSentStorage = false;
-      rack.robot.removeOneItem();
+      currLabel = rack.robot.pop();
+      storageTarget = rack.nextFree(currLabel);
     }
   }
   else {
     if (!commandSentStorage){
       // Move slider to the correct position.
-      moveToAndUpdate(rack.diffX(currX, storageTarget->xOffset), rack.diffY(currY, storageTarget->yOffset));
+      moveToChannel(*storageTarget);
+      storeOneItem();
       commandSentStorage = true;
     }
     else if (replyCount < commandSent){
@@ -202,26 +236,97 @@ void fsm::resetDepositLoop() {
       // Add one item to the storage channel.
       storageSwitch = 0;
       commandSentStorage = false;
-      storageTarget->addOneItem();
+      storageTarget->addOneItem(currLabel);
     }
   }
 }
 
-void fsm::retrieveLoop() {
-  storageSwitch = 0;
+void fsm::resetStorageLoop() {
+  comms.clearSerial1();
   commandSentStorage = false;
+  replyCount = 0;
+  commandSent = 0;
+}
+
+// Retrieving the items for according to the coneList.
+void fsm::retrieveLoop() {
+  // Check if the robot is ready for docking operation.
+  // For retrieving we have to ensure that the cones in rack is according to coneList.
+  if(!readyForDocking){
+    if(rack.robot.numberOfItems == coneLength) {
+      readyForDocking = true;
+      comms.sendMessage("done"); // Tell robot that we are ready for retrival docking.
+    }
+    else if(retrieveSwitch == 0) {
+      if(!commandSentRetrieve) {
+        String target = coneList[rack.robot.numberOfItems];
+        retrieveTarget = rack.locateChannel(target);
+        moveToChannel(*retrieveTarget);
+        collectOneItem();
+        retrieveTarget->removeOneItem();
+        commandSentRetrieve = true;
+      }
+      else if(commandSent > replyCount) {
+        waitForReply();
+      }
+      else{
+        retrieveSwitch = 1;
+        commandSentRetrieve = false;
+      }
+    }
+    else {
+      if(!commandSentRetrieve) {
+        moveToChannel(rack.robot);
+        depositOneItem();
+        rack.robot.addOneItem(coneList[rack.robot.numberOfItems]);
+        commandSentRetrieve = true;
+      }
+      else if(commandSent > replyCount) {
+        waitForReply();
+      }
+      else{
+        retrieveSwitch = 0;
+        commandSentRetrieve = false;
+      }
+    }
+  }
+  else {
+    if(robotDocked) {
+      if(millis() - lastDetect > 1500 && sensor.bufferEntryActivated()) {
+        lastDetect = millis();
+        rack.robot.removeOneItem();
+        if(rack.robot.numberOfItems == 0) {
+          motion.motionStop();
+          retrieveMode = false;
+          motion.moveRobotBufferRight(PASS_SENSOR);
+        }
+      }
+      else {
+        motion.jogRobotBufferRight();
+      }
+    }
+  }
+}
+
+void fsm::resetRetrieveLoop() {
+  comms.clearSerial1();
+  retrieveSwitch = 0;
+  commandSentRetrieve = false;
+  commandSent = 0;
+  replyCount = 0;
+  readyForDocking = false;
+  robotDocked = false;
 }
 
 void fsm::resetMainFlags() {
   depositMode = false;
 }
 
-
 /************************************************
  * This is the starting point of the program
  ***********************************************/
 void fsm::fsmMain() {
-  nextCmd = comms.nextCommand();
+  nextCmd = comms.nextCommand(); // Check for the next command.
 
   if(!systemReady) {
     // reset the system variables.
@@ -230,26 +335,11 @@ void fsm::fsmMain() {
   else {
     stateUpdate();
     if(storageMode) {
-      // Rack in storage mode. Contains items of a certain number in the buffer1.
-      if (storageTarget == nullptr) {
-        // find the next free storage channel.
-        storageTarget = rack.nextFree(itemType);
-        // TO DO error checking, if no more free storage, activate seesaw!
-      }
-      else {
-        storageLoop();
-      }
+      // Rack in storage mode.
+      storageLoop();
     }
     else if(retrieveMode) {
-      // In retrieveMode when robot is coming to collect the items.
-      if(retrieveTarget == nullptr) {
-        retrieveTarget = rack.locateChannel(itemType);
-        // if retrieveTarget is still NULL, error as item not inside.
-        // Send worker to insert into rack.
-      }
-      else {
-        retrieveLoop();
-      }
+      retrieveLoop();
     }
     else if(depositMode) {
       // For robot to deposit the items.

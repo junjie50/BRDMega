@@ -1,20 +1,21 @@
 #include "comms.h"
 
+void commsManager::clearSerial1(){
+  while(Serial1.available()) {
+    Serial1.readString();
+  }
+}
+void commsManager::setup() {
+  wifi.setUp();
+}
 
 // For now use serial from computer to test the system.
 String commsManager::nextCommand() {
-  if (Serial.available()) {
-    String msg = Serial.readStringUntil('\r'); // Only for entering from computer
-    while(Serial.available()) {
-      Serial.read();
-    }
-    return msg;
-  }
-  else {
-    return "";
-  }
+  wifi.connectWifi();
+  return wifi.nextMessage();
 }
 
 void commsManager::sendMessage(String message) {
-  Serial.println(message);
+  wifi.connectWifi();
+  wifi.sendMessageMag(message);
 }

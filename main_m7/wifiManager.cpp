@@ -3,6 +3,8 @@
 #include "arduino_secrets.h"
 
 void wifiManager::setUp() {
+  WiFi.config(selfIp);
+  connectWifi();
   udp.begin(localPort);
 }
 

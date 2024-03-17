@@ -3,6 +3,8 @@
 #include "arduino_secrets.h"
 
 void wifiManager::setUp() {
+  WiFi.config(selfIP);
+  connectWifi();
   udp.begin(localPort);
 }
 
@@ -26,6 +28,7 @@ void wifiManager::connectWifi() {
 
     // you're connected now, so print out the data:
     Serial.print("You're connected to the network");
+    printWifiData();
   }
 }
 
@@ -82,8 +85,9 @@ void wifiManager::printMacAddress(byte mac[]) {
 String wifiManager::nextMessage() {
   // if there's data available, read a packet
   int packetSize = udp.parsePacket();
-  if (packetSize) {
+  if(packetSize) {
     // read the packet into packetBufffer
+    Serial.println("received");
     int len = udp.read(packetBuffer, 255);
     if (len > 0) {
       packetBuffer[len] = '\0';
@@ -108,7 +112,7 @@ void wifiManager::sendMessage(String message){
 }
 
 // Send message to the rack.
-void wifiManager::sendMessageRack(String message){
+void wifiManager::sendMessageMag(String message){
   // send a reply, to the IP address and port that sent us the packet we received
   udp.beginPacket(targetIP, targetPort);
   udp.write(message.c_str());

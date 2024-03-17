@@ -32,9 +32,10 @@ class wifiManager {
     // Set up UDP port to listen on
     WiFiUDP udp;
     unsigned int localPort = 4210;
+    IPAddress selfIP = IPAddress(169,254,78,215);
 
     // Rack IP Address and port
-    unsigned int targetPort = 51748;
-    IPAddress targetIP = IPAddress(172,20,10,4);
+    unsigned int targetPort = 52011;
+    IPAddress targetIP = IPAddress(169,254,145,144);
 };
 #endif

@@ -8,6 +8,7 @@ class rackManager {
     int diffX(int start, int end);
     int diffY(int start, int end);
     int diffHighestY(int start);
+    int diffFirstY(int start);
     int diffSecondY(int start);
     int diffThirdY(int start);
 
@@ -26,13 +27,12 @@ class rackManager {
     // buffer channel hardcode
     Channel robot = Channel(0, 72);
     Channel worker = Channel(0, 38);
-    Channel seesaws[4];
-    Channel stationaries[2];
+    Channel seesaws[16];
+    Channel stationaries[6];
 
-  private:
-    int highest_y = 135;
-    int first_y = 135;
+    int highest_y = 145;
+    int third_y = 135;
     int second_y = 97;
-    int third_y = 60;
+    int first_y = 60;
 };
 #endif

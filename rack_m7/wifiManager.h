@@ -20,7 +20,7 @@ class wifiManager {
     String nextMessage();
     void sendMessage(char message[]);
     void sendMessage(String message);
-    void sendMessageRack(String message);
+    void sendMessageMag(String message);
     
 
   private:
@@ -31,10 +31,10 @@ class wifiManager {
 
     // Set up UDP port to listen on
     WiFiUDP udp;
+    IPAddress selfIP = IPAddress(169,254,78,214);
     unsigned int localPort = 4210;
 
-    // Rack IP Address and port
-    unsigned int targetPort = 51748;
-    IPAddress targetIP = IPAddress(172,20,10,4);
+    IPAddress targetIP = IPAddress(169,254,78,215);
+    unsigned int targetPort = 4210;
 };
 #endif

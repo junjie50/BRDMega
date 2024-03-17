@@ -33,7 +33,7 @@ class wifiManager {
     unsigned int localPort = 4210;
 
     // Rack IP Address and port
-    unsigned int targetPort = 51748;
+    unsigned int targetPort = 59018;
     IPAddress targetIP = IPAddress(172,20,10,4);
 };
 #endif

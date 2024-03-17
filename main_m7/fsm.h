@@ -76,7 +76,6 @@ class fsm {
     bool entry3 = false;
     bool exit3 = true;
     int itemInSystem = 0;
-    int itemType = 0;
 
     // For collection
     bool collectState = false;

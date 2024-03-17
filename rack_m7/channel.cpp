@@ -7,18 +7,39 @@ Channel::Channel(){}
 Channel::Channel(int _xoff, int _yoff) {
   xOffset = _xoff;
   yOffset = _yoff;
-  label = "";
   numberOfItems = 0;
 }
 
 void Channel::removeOneItem() {
-  numberOfItems -= 1;
+  if(!empty()){
+    numberOfItems -= 1;
+  }
 }
 
-void Channel::addOneItem() {
+void Channel::addOneItem(String newLabel) {
+  items[numberOfItems] = newLabel;
   numberOfItems += 1;
 }
 
 bool Channel::empty() {
   return numberOfItems == 0;
+}
+
+bool Channel::full() {
+  return numberOfItems == 4;
+}
+
+void Channel::reset() {
+    String label = "";
+    String items[4];
+}
+
+String Channel::pop(){
+  if(!empty()) {
+    numberOfItems -= 1;
+    if(numberOfItems == 0) {
+      label = "";
+    }
+    return items[numberOfItems];
+  }
 }

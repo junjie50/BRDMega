@@ -43,6 +43,7 @@ ros::Subscriber<std_msgs::String> sub("wp1mag_command", callback);
 ros::Subscriber<std_msgs::String> subRack("wp1rack_command", callbackRack);
 
 void commSetUp() {
+  nh.getHardware()->setBaud(57600);
   nh.initNode();
   nh.advertise(pubCone);
   nh.advertise(pubRes);
@@ -54,6 +55,7 @@ void commSetUp() {
   nh.spinOnce();
 }
 
+// This function calls spinonce to check if there is any serial buffer in the different channels.
 void updateRosSerial() {
   nh.spinOnce();
 }
@@ -62,7 +64,7 @@ String nextCommand() {
   if(dataIn) {
     nh.loginfo("get data");
     dataIn = false;
-    if (command == "PrepareCone" || command == "StoreCone"){
+    if (command == "PrepareCone" || command == "StoreCone" || command == "EmptyMag" || command == "GetConeMag"){
       return command;
     } 
     else {
@@ -112,13 +114,13 @@ void sendRackResponse(const char*  message) {
 
 // ######################### UTILITY FUNCTIONS ######################### //
 void fsm::stateUpdate(){
-  if(nextCmd == "StoreCone") { // Received Command.
+  if(nextCmd == "StoreCone") { // StoreCore state Update
     if(!sensors.armEntryEmpty()) {
       entry1 = true;
+      exit1 = false;
       idleState = false;
       itemInSystem += 1;
       systemMode = 1;
-      itemType = 1;
     }
   }
   else if(nextCmd == "PrepareCone") {
@@ -126,13 +128,13 @@ void fsm::stateUpdate(){
     idleState = false;
     itemInSystem -= 1;
     systemMode = 0;
-    itemType = 1;
   }
   else if(nextCmd == "EmptyMag") {
     if(itemInSystem > 0){
       unloadState = true;
       idleState = false;
       unloadStartTime = millis()-TIME_TO_PASS;
+      systemMode = 1;
     }
     else{
       sendResponse("done");
@@ -142,7 +144,7 @@ void fsm::stateUpdate(){
     if(fsmConeListCount > 0) {
       collectState = true;
       idleState = false;
-      systemMode = 0;
+      systemMode = 1;
       collectStartTime = millis()-TIME_TO_PASS;
     }
     else {
@@ -279,7 +281,6 @@ void fsm::restart() {
     entry3 = false;
     exit3 = true;
     itemInSystem = 0;
-    itemType = 0;
 
     // For collection
     collectState = false;
@@ -340,22 +341,23 @@ void fsm::flowLogicFirst(){
       jogSliderUpUntilTouch(); //sets currTrayY
     }
     else if(!exit1) { // do until object hit the end of tray 1.
-      motion.jogArmBeltLeft();
       if(sensors.sensorActivated(1)) {
         exit1 = true;
       }
-    }
-    else if(!entry2) {
-      motion.jogArmBeltLeft();
-      if(sensors.sensorActivated(2)) {
-        motion.motionStop();
-        entry2 = true;
-        resetTrayOne(); // Reset the control flags for tray 1.
+      else {
+        motion.jogArmOnlyBeltLeft();
       }
+    }
+    else if(!sensors.sensorActivated(2)) {
+      motion.jogArmOnlyBeltLeft();
+    }
+    else {
+      motion.motionStop();
+      entry2 = true;
+      resetTrayOne(); 
     }
   }
   else{
-    motion.jogArmBeltRight();
     if(sensors.sensorActivated(0)) {
       motion.motionStop();
       entry1 = false;
@@ -366,6 +368,9 @@ void fsm::flowLogicFirst(){
         systemMode = -1;
       }
     }
+    else{
+      motion.jogArmOnlyBeltRight();
+    }
   }
 }
 
@@ -375,7 +380,6 @@ void fsm::flowLogicSecond() {
       jogSliderDownUntilTouch();//sets currTrayY to down
     }
     else {
-      motion.jogArmBeltRight();
       if(sensors.sensorActivated(3)) {
         //Reset 2nd tray
         motion.motionStop();
@@ -383,7 +387,7 @@ void fsm::flowLogicSecond() {
         idleState = true;
 
         // Move the item pass the last sensor.
-        motion.moveArmBeltRight(PASS_SENSOR);
+        motion.moveRackArmBeltRight(PASS_SENSOR);
 
         // Update that we are done.
         sendResponse("done");
@@ -393,6 +397,9 @@ void fsm::flowLogicSecond() {
           systemMode = -1;
         }
       }
+      else {
+        motion.jogRackArmBeltRight();
+      }
     }
   }
   else {
@@ -400,11 +407,13 @@ void fsm::flowLogicSecond() {
       jogSliderUpUntilTouch();
     }
     else if(!sensors.sensorActivated(0)) { // Only move when there is free space
-      motion.jogArmBeltRight();
       if(sensors.sensorActivated(1)) {
         entry1 = true;
         // Reset 2nd tray
         entry2 = false;
+      }
+      else {
+        motion.jogArmOnlyBeltRight();
       }
     }
   }
@@ -415,13 +424,13 @@ void fsm::flowLogicThird() {
     if(currTrayY != startTrayY) {
       jogSliderDownUntilTouch(); //sets currTrayY to down
     }
-    else if(!entry2) {
-      motion.jogArmBeltLeft();
-      if(sensors.sensorActivated(2)) { // Jog until slightly the entry sensor.
-          motion.motionStop();
-          entry2 = true;
-          entry3 = false;
-      }
+    else if(sensors.sensorActivated(2)) {
+      motion.motionStop();
+      entry2 = true;
+      entry3 = false;
+    }
+    else {
+      motion.jogRackArmBeltLeft();
     }
   }
 }
@@ -447,36 +456,35 @@ void fsm::flowLogic() {
 
 // Function is called when it is safe to unload and given the command from the robot.
 void fsm::unload() {
-  if(currTrayY != startTrayY) {
-    jogSliderDownUntilTouch(); //sets currTrayY to down
+  if(currTrayY == startTrayY) {
+    jogSliderUpUntilTouch(); //sets currTrayY to up
   }
   else {
-    motion.jogArmBeltRight();
+    motion.jogRackOnlyBeltRight();
     if(millis() - unloadStartTime > TIME_TO_PASS) {
-      if(!sensors.rackEntryEmpty()) {
+      if(itemInSystem == 0) {
+        motion.motionStop();
+        unloadState = false;
+        idleState = true;
+        sendResponse("done");
+      }
+      else if(!sensors.rackEntryEmpty()) {
         unloadStartTime = millis();
         itemInSystem -= 1;
-        if(itemInSystem == 0) {
-          motion.motionStop();
-          motion.moveArmBeltRight(UNLOAD_AMT);
-          unloadState = false;
-          idleState = true;
-          sendResponse("done");
-        }
       }
     }
   }
 }
 
 void fsm::collect() {
-  if(currTrayY != startTrayY) {
-    jogSliderDownUntilTouch(); //sets currTrayY to down
+  if(currTrayY == startTrayY) {
+    jogSliderUpUntilTouch(); //sets currTrayY to up
   }
   else {
     if(millis() - collectStartTime > TIME_TO_PASS) {
       if(!sensors.rackEntryEmpty()) {
         collectStartTime = millis();
-        motion.moveArmBeltLeft(PASS_SENSOR);
+        motion.moveRackOnlyBeltLeft(PASS_SENSOR);
         itemInSystem += 1;
         if(itemInSystem == fsmConeListCount) {
           collectState = false;
@@ -498,10 +506,13 @@ void fsm::wifiForwarder() {
   nextCmdRack = nextCommandRack();
   nextConeListStr = nextConeList();
   if(nextCmdRack.length() > 0) {
-    wifi.sendMessageRack(nextCmdRack+nextConeListStr);
+    wifi.sendMessageRack(nextCmdRack+","+nextConeListStr);
   }
-
+  
+  // if there is coneList, store it internally for usage.
+  // Get readying magazine for docking.
   if(nextConeListStr.length() > 0) {
+    systemMode = 1; // Prepare magazine for docking.
     int start = 0;
     int next = nextConeListStr.indexOf(',');
     fsmConeListCount = 0;
@@ -513,7 +524,7 @@ void fsm::wifiForwarder() {
     }
   }
 
-  // Response from rack to main robot.
+  // If there is response back from rack, forward it to robot via serial.
   String response = wifi.nextMessage();
   if(response.length() > 0){
     sendRackResponse(response.c_str());
@@ -526,11 +537,12 @@ void fsm::mainLogic() {
   updateRosSerial();
 
   // Forward the data to the rack if need to.
+  // Updates fsm conelist with rosSerial coneList.
   wifiForwarder();
 
-  //Update command.
+  //Update command for the magazine.
   nextCmd = nextCommand();
-  
+
   //Overrides the existing states via stopState var.
   override();
 
@@ -538,8 +550,8 @@ void fsm::mainLogic() {
   replyUpdate();
 
   if(stopState){
-    //Critical, received command to stop everything.s
-    delay(5);
+    //Critical, received command to stop everything.
+    delay(10);
   }
   else if(!systemReady) {
     resetMachine();

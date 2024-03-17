@@ -24,5 +24,5 @@ int sensorManager::readSensor(int num){
 }
 
 bool sensorManager::bufferEntryActivated(){
-  return sensorActivated(BUFFERENTRY]);
+  return sensorActivated(BUFFERENTRY);
 }

@@ -1,2 +1,2 @@
-#define SECRET_SSID "Junjie"
-#define SECRET_PASS "88888888"
+#define SECRET_SSID "SUT06_Radio"
+#define SECRET_PASS "clearpath"

@@ -10,7 +10,7 @@ bool done = false;
 void jogSliderUpUntilTouch() {
   if(sensors.sensorActivated(7)) {
     motion.motionStop();
-    motion.moveSliderBeltDown(5);
+    motion.moveSliderBeltDown(4);
     delay(1000);
     done = true;
   }
@@ -44,17 +44,7 @@ void setup() {
 
 void loop() {
   //put your main code here, to run repeatedly:
-  if(!done){
-    jogSliderDownUntilTouch();
-  }
-  else{
-    motion.jogArmBeltRight();
-  }
-  // if(Serial2.available()){
-  //   Serial.println(Serial2.readString());
-  // }
-
-  // if(Serial.available()){
-  //   Serial2.print(Serial.readString());
-  // }
+  // motion.jogRackOnlyBeltRight();
+  // motion.jogArmOnlyBeltRight();
+  motion.jogRackArmBeltRight();
 }

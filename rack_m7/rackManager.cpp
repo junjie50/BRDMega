@@ -16,6 +16,10 @@ int rackManager::diffHighestY(int start) {
   return highest_y - start;
 }
 
+int rackManager::diffFirstY(int start) {
+  return first_y - start;
+}
+
 int rackManager::diffSecondY(int start) {
   return second_y - start;
 }
@@ -44,17 +48,30 @@ int rackManager::toRobotChannelX(int start) {
  # Hole management
  ***********************************************/
 void rackManager::setup() {
-  seesaws[0] = Channel(0, highest_y);
-  seesaws[1] = Channel(1, third_y);
-  seesaws[2] = Channel(1, second_y);
-  seesaws[3] = Channel(1, first_y);
-  stationaries[0] = Channel(0, 0);
-  stationaries[1] = Channel(1, 0);
+  seesaws[0] = Channel(1, first_y);
+  seesaws[1] = Channel(1, second_y);
+  seesaws[2] = Channel(1, third_y);
+  seesaws[3] = Channel(0, third_y);
+  stationaries[0] = Channel(1, 0);
+  stationaries[1] = Channel(0, 0);
+  
+  int count = 4;
+  int countSta = 2;
+  for(int i = -1; i > -5; i--) {
+    seesaws[count] = Channel(i, first_y);
+    seesaws[count + 1] = Channel(i, second_y);
+    seesaws[count + 2] = Channel(i, third_y);
+
+    stationaries[countSta] = Channel(i, 0);
+
+    count += 3;
+    countSta += 1;
+  }
 }
 
 // Checking for the label in seesaw
 bool rackManager::inSeesaw(String label) {
-  for(int i = 0; i < 4; i++){
+  for(int i = 0; i < 16; i++){
     if (seesaws[i].label == label) {
       return true;
     }
@@ -64,7 +81,7 @@ bool rackManager::inSeesaw(String label) {
 
 // Checking for the label in stationary
 bool rackManager::inStationary(String label) {
-  for(int i = 0; i < 2; i++){
+  for(int i = 0; i < 6; i++){
     if (seesaws[i].label == label) {
       return true;
     }
@@ -76,15 +93,17 @@ bool rackManager::inStationary(String label) {
 // nextFree prioritise storing in the stationary first,
 // if label is already in stationary, place it in seesaw if there is space.
 Channel* rackManager::nextFree(String label) {
-  if (!inStationary(label)) {
-    for (int i = 0; i < 2; i++) {
-      if(stationaries[i].empty()) {
-        return &stationaries[i];
-      }
+  for (int i = 0; i < 6; i++) {
+    if(stationaries[i].label == label && !stationaries[i].full()) {
+      return &stationaries[i];
     }
   }
-  for (int i = 0; i < 4; i++) {
+
+  for (int i = 0; i < 16; i++) {
     if(seesaws[i].empty()) {
+      return &seesaws[i];
+    }
+    else if(seesaws[i].label == label && !seesaws[i].full()) {
       return &seesaws[i];
     }
   }
@@ -95,15 +114,19 @@ Channel* rackManager::nextFree(String label) {
 // Function to get the channel containing the label.
 Channel* rackManager::locateChannel(String label) {
   if(inSeesaw(label)) {
-    for(int i = 0; i < 4; i++) {
-      if (seesaws[i].label == label){
+    for(int i = 0; i < 16; i++) {
+      if (seesaws[i].label == label && !seesaws[i].empty()){
         return &seesaws[i];
       }
     }
   }
+
   if(inStationary(label)){
-    for(int i = 0; i < 2; i++) {
-      return &stationaries[i];
+    for(int i = 0; i < 6; i++) {
+      if(stationaries[i].label == label && !stationaries[i].empty())
+      {
+        return &stationaries[i];
+      }
     }
   }
   return nullptr;
